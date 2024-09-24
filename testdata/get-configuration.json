@@ -1,0 +1,11 @@
+{
+    "service1": {
+        "secret_value_1": "string",
+        "secret_value_2": "string",
+        "config_value_1": "string"
+    },
+    "service2": {
+        "secret_value_1": "string",
+        "secret_value_2": "string"
+    }
+}
