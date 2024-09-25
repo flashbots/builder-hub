@@ -78,7 +78,7 @@ func (srv *Server) getRouter() http.Handler {
 	mux.With(srv.httpLogger).Get("/api/v1/measurements", srv.handleGetMeasurements)
 	mux.With(srv.httpLogger).Get("/api/v1/auth-client-atls/configuration", srv.handleGetConfiguration)
 	mux.With(srv.httpLogger).Get("/api/v1/auth-client-atls/builders", srv.handleGetBuilders)
-	mux.With(srv.httpLogger).Post("/api/v1/auth-client-atls/register_credentials", srv.handleRegisterCredentials)
+	mux.With(srv.httpLogger).Post("/api/v1/auth-client-atls/register_credentials/{service}", srv.handleRegisterCredentials)
 
 	if srv.cfg.EnablePprof {
 		srv.log.Info("pprof API enabled")

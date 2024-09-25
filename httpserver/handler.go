@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func (srv *Server) handleLivenessCheck(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +59,13 @@ func (srv *Server) handleGetMeasurements(w http.ResponseWriter, r *http.Request)
 }
 
 func (srv *Server) handleRegisterCredentials(w http.ResponseWriter, r *http.Request) {
-	service := r.URL.Query().Get("service")
+	// get service name from URL
+	service := chi.URLParam(r, "service")
+	if !allowedServices[service] {
+		srv.log.Error("Invalid service name", "service", service)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	// read request body
 	body, err := io.ReadAll(r.Body)

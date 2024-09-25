@@ -20,7 +20,7 @@ curl localhost:8080/api/v1/measurements
 # client-aTLS secured endpoints
 curl localhost:8080/api/v1/auth-client-atls/builders
 curl localhost:8080/api/v1/auth-client-atls/configuration
-curl -X POST localhost:8080/api/v1/auth-client-atls/register_credentials?service=abc
+curl -X POST localhost:8080/api/v1/auth-client-atls/register_credentials/rbuilder
 ```
 
 **Install dev dependencies**

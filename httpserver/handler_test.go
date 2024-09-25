@@ -110,7 +110,7 @@ func Test_Handlers_BuilderConfigHub(t *testing.T) {
 		{http.MethodGet, "/api/v1/measurements", nil},
 		{http.MethodGet, "/api/v1/auth-client-atls/configuration", nil},
 		{http.MethodGet, "/api/v1/auth-client-atls/builders", nil},
-		{http.MethodPost, "/api/v1/auth-client-atls/register_credentials", []byte(`{"var1":"foo"}`)},
+		{http.MethodPost, "/api/v1/auth-client-atls/register_credentials/rbuilder", []byte(`{"var1":"foo"}`)},
 	}
 
 	srv, err := NewHTTPServer(testServerConfig)
