@@ -11,15 +11,14 @@ https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec8
 ## Getting started
 
 ```bash
+# start the server
 go run cmd/httpserver/main.go
 
 # public endpoints
 curl localhost:8080/api/v1/measurements
 
-# signature secured endpoints
-curl localhost:8080/api/v1/auth-header-signature/builders
-
 # client-aTLS secured endpoints
+curl localhost:8080/api/v1/auth-client-atls/builders
 curl localhost:8080/api/v1/auth-client-atls/configuration
 curl -X POST localhost:8080/api/v1/auth-client-atls/register_credentials?service=abc
 ```
