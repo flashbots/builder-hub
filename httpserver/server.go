@@ -41,7 +41,7 @@ type Server struct {
 	mockGetMeasurementsResponse string
 }
 
-func New(cfg *HTTPServerConfig) (srv *Server, err error) {
+func NewHTTPServer(cfg *HTTPServerConfig) (srv *Server, err error) {
 	metricsSrv, err := metrics.New(common.PackageName, cfg.MetricsAddr)
 	if err != nil {
 		return nil, err
@@ -55,6 +55,17 @@ func New(cfg *HTTPServerConfig) (srv *Server, err error) {
 	}
 	srv.isReady.Swap(true)
 
+	srv.srv = &http.Server{
+		Addr:         cfg.ListenAddr,
+		Handler:      srv.getRouter(),
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	}
+
+	return srv, nil
+}
+
+func (srv *Server) getRouter() http.Handler {
 	mux := chi.NewRouter()
 
 	// System API
@@ -69,87 +80,80 @@ func New(cfg *HTTPServerConfig) (srv *Server, err error) {
 	mux.With(srv.httpLogger).Get("/api/v1/auth-header-signature/builders", srv.handleGetBuilders)
 	mux.With(srv.httpLogger).Get("/api/v1/measurements", srv.handleGetMeasurements)
 
-	if cfg.EnablePprof {
+	if srv.cfg.EnablePprof {
 		srv.log.Info("pprof API enabled")
 		mux.Mount("/debug", middleware.Profiler())
 	}
 
-	srv.srv = &http.Server{
-		Addr:         cfg.ListenAddr,
-		Handler:      mux,
-		ReadTimeout:  cfg.ReadTimeout,
-		WriteTimeout: cfg.WriteTimeout,
-	}
-
-	return srv, nil
+	return mux
 }
 
-func (s *Server) _stringFromFile(fn string) (string, error) {
+func (srv *Server) _stringFromFile(fn string) (string, error) {
 	content, err := os.ReadFile(fn)
 	if err != nil {
-		s.log.Error("Failed to read mock response", "file", fn, "err", err)
+		srv.log.Error("Failed to read mock response", "file", fn, "err", err)
 		return "", err
 	}
 	return string(content), nil
 }
 
-func (s *Server) LoadMockResponses() (err error) {
-	s.mockGetConfigResponse, err = s._stringFromFile("testdata/get-configuration.json")
+func (srv *Server) LoadMockResponses() (err error) {
+	srv.mockGetConfigResponse, err = srv._stringFromFile("testdata/get-configuration.json")
 	if err != nil {
 		return err
 	}
-	s.mockGetBuildersResponse, err = s._stringFromFile("testdata/get-builders.json")
+	srv.mockGetBuildersResponse, err = srv._stringFromFile("testdata/get-builders.json")
 	if err != nil {
 		return err
 	}
-	s.mockGetMeasurementsResponse, err = s._stringFromFile("testdata/get-measurements.json")
+	srv.mockGetMeasurementsResponse, err = srv._stringFromFile("testdata/get-measurements.json")
 	return err
 }
 
-func (s *Server) httpLogger(next http.Handler) http.Handler {
-	return httplogger.LoggingMiddlewareSlog(s.log, next)
+func (srv *Server) httpLogger(next http.Handler) http.Handler {
+	return httplogger.LoggingMiddlewareSlog(srv.log, next)
 }
 
-func (s *Server) RunInBackground() {
+func (srv *Server) RunInBackground() {
 	// metrics
-	if s.cfg.MetricsAddr != "" {
+	if srv.cfg.MetricsAddr != "" {
 		go func() {
-			s.log.With("metricsAddress", s.cfg.MetricsAddr).Info("Starting metrics server")
-			err := s.metricsSrv.ListenAndServe()
+			srv.log.With("metricsAddress", srv.cfg.MetricsAddr).Info("Starting metrics server")
+			err := srv.metricsSrv.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				s.log.Error("HTTP server failed", "err", err)
+				srv.log.Error("HTTP server failed", "err", err)
 			}
 		}()
 	}
 
 	// api
 	go func() {
-		s.log.Info("Starting HTTP server", "listenAddress", s.cfg.ListenAddr)
-		if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			s.log.Error("HTTP server failed", "err", err)
+		srv.log.Info("Starting HTTP server", "listenAddress", srv.cfg.ListenAddr)
+		if err := srv.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			srv.log.Error("HTTP server failed", "err", err)
 		}
 	}()
 }
 
-func (s *Server) Shutdown() {
+func (srv *Server) Shutdown() {
 	// api
-	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.GracefulShutdownDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), srv.cfg.GracefulShutdownDuration)
 	defer cancel()
-	if err := s.srv.Shutdown(ctx); err != nil {
-		s.log.Error("Graceful HTTP server shutdown failed", "err", err)
+	if err := srv.srv.Shutdown(ctx); err != nil {
+		srv.log.Error("Graceful HTTP server shutdown failed", "err", err)
 	} else {
-		s.log.Info("HTTP server gracefully stopped")
+		srv.log.Info("HTTP server gracefully stopped")
 	}
 
 	// metrics
-	if len(s.cfg.MetricsAddr) != 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), s.cfg.GracefulShutdownDuration)
+	if len(srv.cfg.MetricsAddr) != 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), srv.cfg.GracefulShutdownDuration)
 		defer cancel()
 
-		if err := s.metricsSrv.Shutdown(ctx); err != nil {
-			s.log.Error("Graceful metrics server shutdown failed", "err", err)
+		if err := srv.metricsSrv.Shutdown(ctx); err != nil {
+			srv.log.Error("Graceful metrics server shutdown failed", "err", err)
 		} else {
-			s.log.Info("Metrics server gracefully stopped")
+			srv.log.Info("Metrics server gracefully stopped")
 		}
 	}
 }

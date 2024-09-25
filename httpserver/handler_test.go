@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,10 @@ import (
 	"github.com/flashbots/builder-config-hub/common"
 	"github.com/stretchr/testify/require"
 )
+
+var testServerConfig = &HTTPServerConfig{
+	Log: getTestLogger(),
+}
 
 func getTestLogger() *slog.Logger {
 	return common.SetupLogger(&common.LoggingOpts{
@@ -28,7 +33,7 @@ func Test_Handlers_Healthcheck_Drain_Undrain(t *testing.T) {
 	)
 
 	//nolint: exhaustruct
-	s, err := New(&HTTPServerConfig{
+	s, err := NewHTTPServer(&HTTPServerConfig{
 		DrainDuration: latency,
 		ListenAddr:    listenAddr,
 		Log:           getTestLogger(),
@@ -92,5 +97,35 @@ func Test_Handlers_Healthcheck_Drain_Undrain(t *testing.T) {
 		_, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Healthcheck must return `Ok` after undraining")
+	}
+}
+
+func Test_Handlers_BuilderConfigHub(t *testing.T) {
+	routes := []struct {
+		method  string
+		path    string
+		payload []byte
+	}{
+		// BuilderConfigHub API: https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87?pvs=4#10a6b4a0d87680fd81e0cad9bac3b8c5
+		{http.MethodGet, "/api/v1/auth-client-atls/configuration", nil},
+		{http.MethodGet, "/api/v1/auth-header-signature/builders", nil},
+		{http.MethodGet, "/api/v1/measurements", nil},
+		{http.MethodPost, "/api/v1/auth-client-atls/register_credentials", []byte(`{"var1":"foo"}`)},
+	}
+
+	srv, err := NewHTTPServer(testServerConfig)
+	require.NoError(t, err)
+
+	for _, r := range routes {
+		var payload io.Reader
+		if r.payload != nil {
+			payload = bytes.NewReader(r.payload)
+		}
+		req, err := http.NewRequest(r.method, r.path, payload)
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		srv.getRouter().ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code)
 	}
 }
