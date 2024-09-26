@@ -23,6 +23,8 @@ curl localhost:8080/api/v1/auth-client-atls/configuration
 curl -X POST localhost:8080/api/v1/auth-client-atls/register_credentials/rbuilder
 ```
 
+### Development
+
 **Install dev dependencies**
 
 ```bash
@@ -39,4 +41,17 @@ go install github.com/daixiang0/gci@v0.11.2
 make lint
 make test
 make fmt
+```
+
+### Database tests
+
+```bash
+# start the database
+docker run -d --name postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres postgres
+
+# run the tests
+RUN_DB_TESTS=1 make test
+
+# stop the database
+docker rm -f postgres-test
 ```
