@@ -9,7 +9,7 @@
         "builder_public_ip": "1.2.3.4",
         "tls_hosts": [
             "1.2.3.4",
-            "internal.builderX.io",
+            "fundomain.builderx.io",
             "172.27.14.1",
             "2001:db8::123.123.123.123"
         ]
