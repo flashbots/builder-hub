@@ -17,12 +17,12 @@ var flags []cli.Flag = []cli.Flag{
 	&cli.StringFlag{
 		Name:  "listen-addr",
 		Value: "127.0.0.1:8080",
-		Usage: "address to listen on for API",
+		Usage: "address to serve API",
 	},
 	&cli.StringFlag{
 		Name:  "metrics-addr",
 		Value: "127.0.0.1:8090",
-		Usage: "address to listen on for Prometheus metrics",
+		Usage: "address to serve Prometheus metrics",
 	},
 	&cli.BoolFlag{
 		Name:  "log-json",
@@ -41,7 +41,7 @@ var flags []cli.Flag = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:  "log-service",
-		Value: "",
+		Value: "httpserver",
 		Usage: "add 'service' tag to logs",
 	},
 	&cli.BoolFlag{
@@ -51,7 +51,7 @@ var flags []cli.Flag = []cli.Flag{
 	},
 	&cli.Int64Flag{
 		Name:  "drain-seconds",
-		Value: 45,
+		Value: 15,
 		Usage: "seconds to wait in drain HTTP request",
 	},
 }
@@ -71,17 +71,21 @@ func main() {
 			enablePprof := cCtx.Bool("pprof")
 			drainDuration := time.Duration(cCtx.Int64("drain-seconds")) * time.Second
 
-			log := common.SetupLogger(&common.LoggingOpts{
-				Debug:   logDebug,
-				JSON:    logJSON,
-				Service: logService,
-				Version: common.Version,
-			})
-
-			if logUID {
-				id := uuid.Must(uuid.NewRandom())
-				log = log.With("uid", id.String())
+			logTags := map[string]string{
+				"version": common.Version,
 			}
+			if logUID {
+				logTags["uid"] = uuid.Must(uuid.NewRandom()).String()
+			}
+
+			log := common.SetupLogger(&common.LoggingOpts{
+				Service:        logService,
+				JSON:           logJSON,
+				Debug:          logDebug,
+				Concise:        true,
+				RequestHeaders: true,
+				Tags:           logTags,
+			})
 
 			cfg := &httpserver.HTTPServerConfig{
 				ListenAddr:  listenAddr,

@@ -3,13 +3,13 @@ package httpserver
 import (
 	"bytes"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/flashbots/builder-config-hub/common"
+	"github.com/go-chi/httplog/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,12 +17,11 @@ var testServerConfig = &HTTPServerConfig{
 	Log: getTestLogger(),
 }
 
-func getTestLogger() *slog.Logger {
+func getTestLogger() *httplog.Logger {
 	return common.SetupLogger(&common.LoggingOpts{
 		Debug:   true,
 		JSON:    false,
 		Service: "test",
-		Version: "test",
 	})
 }
 

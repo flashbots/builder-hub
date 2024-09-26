@@ -3,16 +3,14 @@ package httpserver
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/flashbots/builder-config-hub/common"
 	"github.com/flashbots/builder-config-hub/metrics"
-	"github.com/flashbots/go-utils/httplogger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v2"
 	"go.uber.org/atomic"
 )
 
@@ -20,7 +18,7 @@ type HTTPServerConfig struct {
 	ListenAddr  string
 	MetricsAddr string
 	EnablePprof bool
-	Log         *slog.Logger
+	Log         *httplog.Logger
 
 	DrainDuration            time.Duration
 	GracefulShutdownDuration time.Duration
@@ -31,7 +29,7 @@ type HTTPServerConfig struct {
 type Server struct {
 	cfg     *HTTPServerConfig
 	isReady atomic.Bool
-	log     *slog.Logger
+	log     *httplog.Logger
 
 	srv        *http.Server
 	metricsSrv *metrics.MetricsServer
@@ -42,16 +40,11 @@ type Server struct {
 }
 
 func NewHTTPServer(cfg *HTTPServerConfig) (srv *Server, err error) {
-	metricsSrv, err := metrics.New(common.PackageName, cfg.MetricsAddr)
-	if err != nil {
-		return nil, err
-	}
-
 	srv = &Server{
 		cfg:        cfg,
 		log:        cfg.Log,
 		srv:        nil,
-		metricsSrv: metricsSrv,
+		metricsSrv: metrics.NewMetricsServer(cfg.MetricsAddr, nil),
 	}
 	srv.isReady.Swap(true)
 
@@ -68,17 +61,22 @@ func NewHTTPServer(cfg *HTTPServerConfig) (srv *Server, err error) {
 func (srv *Server) getRouter() http.Handler {
 	mux := chi.NewRouter()
 
+	mux.Use(httplog.RequestLogger(srv.log))
+	mux.Use(middleware.Recoverer)
+
 	// System API
-	mux.With(srv.httpLogger).Get("/livez", srv.handleLivenessCheck)
-	mux.With(srv.httpLogger).Get("/readyz", srv.handleReadinessCheck)
-	mux.With(srv.httpLogger).Get("/drain", srv.handleDrain)
-	mux.With(srv.httpLogger).Get("/undrain", srv.handleUndrain)
+	mux.Get("/livez", srv.handleLivenessCheck)
+	mux.Get("/readyz", srv.handleReadinessCheck)
+	mux.Get("/drain", srv.handleDrain)
+	mux.Get("/undrain", srv.handleUndrain)
+
+	mux.Get("/test-panic", srv.handleTestPanic)
 
 	// BuilderConfigHub API: https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87?pvs=4#10a6b4a0d87680fd81e0cad9bac3b8c5
-	mux.With(srv.httpLogger).Get("/api/v1/measurements", srv.handleGetMeasurements)
-	mux.With(srv.httpLogger).Get("/api/v1/auth-client-atls/configuration", srv.handleGetConfiguration)
-	mux.With(srv.httpLogger).Get("/api/v1/auth-client-atls/builders", srv.handleGetBuilders)
-	mux.With(srv.httpLogger).Post("/api/v1/auth-client-atls/register_credentials/{service}", srv.handleRegisterCredentials)
+	mux.Get("/api/v1/measurements", srv.handleGetMeasurements)
+	mux.Get("/api/v1/auth-client-atls/configuration", srv.handleGetConfiguration)
+	mux.Get("/api/v1/auth-client-atls/builders", srv.handleGetBuilders)
+	mux.Post("/api/v1/auth-client-atls/register_credentials/{service}", srv.handleRegisterCredentials)
 
 	if srv.cfg.EnablePprof {
 		srv.log.Info("pprof API enabled")
@@ -110,16 +108,12 @@ func (srv *Server) LoadMockResponses() (err error) {
 	return err
 }
 
-func (srv *Server) httpLogger(next http.Handler) http.Handler {
-	return httplogger.LoggingMiddlewareSlog(srv.log, next)
-}
-
 func (srv *Server) RunInBackground() {
 	// metrics
 	if srv.cfg.MetricsAddr != "" {
 		go func() {
 			srv.log.With("metricsAddress", srv.cfg.MetricsAddr).Info("Starting metrics server")
-			err := srv.metricsSrv.ListenAndServe()
+			err := srv.metricsSrv.Start()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				srv.log.Error("HTTP server failed", "err", err)
 			}
