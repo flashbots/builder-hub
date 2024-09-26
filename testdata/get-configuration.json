@@ -1,11 +1,41 @@
 {
-    "service1": {
-        "secret_value_1": "string",
-        "secret_value_2": "string",
-        "config_value_1": "string"
+    "reth_chain_downloader": {
+        "aws_access_key_id": "string",
+        "aws_secret_access_key": "string",
+        "rclone_s3_endpoint": "string"
     },
-    "service2": {
-        "secret_value_1": "string",
-        "secret_value_2": "string"
+    "orderflow_proxy": {
+        "flashbots_of_signing_key": "0x00",
+        "builder_public_ip": "1.2.3.4",
+        "tls_hosts": [
+            "1.2.3.4",
+            "internal.builderX.io",
+            "172.27.14.1",
+            "2001:db8::123.123.123.123"
+        ]
+    },
+    "rbuilder": {
+        "relay_secret_key": "0x00",
+        "optimistic_relay_secret_key": "0x00",
+        "coinbase_secret_key": "0x00",
+        "always_seal": true,
+        "relays": [
+            {
+                "name": "flashbots",
+                "url": "https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net",
+                "use_ssz_for_submit": true,
+                "use_gzip_for_submit": false,
+                "priority": 0,
+                "optimistic": false
+            },
+            {
+                "name": "ultrasound",
+                "url": "https://0xa1559ace749633b997cb3fdacffb890aeebdb0f5a3b6aaa7eeeaf1a38af0a8fe88b9e4b1f61f236d2e64d95733327a62@relay.ultrasound.money",
+                "use_ssz_for_submit": true,
+                "use_gzip_for_submit": true,
+                "priority": 1,
+                "optimistic": true
+            }
+        ]
     }
 }
