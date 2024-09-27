@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/flashbots/builder-config-hub/database/vars"
+	"github.com/flashbots/builder-hub/database/vars"
 	migrate "github.com/rubenv/sql-migrate"
 )
 

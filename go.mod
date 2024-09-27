@@ -1,4 +1,4 @@
-module github.com/flashbots/builder-config-hub
+module github.com/flashbots/builder-hub
 
 go 1.22
 

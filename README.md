@@ -1,6 +1,6 @@
 # BuilderConfigHub
 
-[![Test status](https://github.com/flashbots/builder-config-hub/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/flashbots/builder-config-hub/actions?query=workflow%3A%22Checks%22)
+[![Test status](https://github.com/flashbots/builder-hub/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/flashbots/builder-hub/actions?query=workflow%3A%22Checks%22)
 
 Endpoint for TDX builders to talk to.
 

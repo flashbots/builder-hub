@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flashbots/builder-config-hub/common"
+	"github.com/flashbots/builder-hub/common"
 	"github.com/go-chi/httplog/v2"
 	"github.com/stretchr/testify/require"
 )

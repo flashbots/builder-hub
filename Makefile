@@ -23,12 +23,12 @@ clean: ## Clean the build directory
 .PHONY: build-cli
 build-cli: ## Build the CLI
 	@mkdir -p ./build
-	go build -trimpath -ldflags "-X github.com/flashbots/builder-config-hub/common.Version=${VERSION}" -v -o ./build/cli cmd/cli/main.go
+	go build -trimpath -ldflags "-X github.com/flashbots/builder-hub/common.Version=${VERSION}" -v -o ./build/cli cmd/cli/main.go
 
 .PHONY: build-httpserver
 build-httpserver: ## Build the HTTP server
 	@mkdir -p ./build
-	go build -trimpath -ldflags "-X github.com/flashbots/builder-config-hub/common.Version=${VERSION}" -v -o ./build/httpserver cmd/httpserver/main.go
+	go build -trimpath -ldflags "-X github.com/flashbots/builder-hub/common.Version=${VERSION}" -v -o ./build/httpserver cmd/httpserver/main.go
 
 ##@ Test & Development
 

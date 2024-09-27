@@ -4,8 +4,8 @@ package database
 import (
 	"os"
 
-	"github.com/flashbots/builder-config-hub/database/migrations"
-	"github.com/flashbots/builder-config-hub/database/vars"
+	"github.com/flashbots/builder-hub/database/migrations"
+	"github.com/flashbots/builder-hub/database/vars"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"

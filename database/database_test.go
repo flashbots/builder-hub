@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/flashbots/builder-config-hub/common"
-	"github.com/flashbots/builder-config-hub/database/migrations"
-	"github.com/flashbots/builder-config-hub/database/vars"
+	"github.com/flashbots/builder-hub/common"
+	"github.com/flashbots/builder-hub/database/migrations"
+	"github.com/flashbots/builder-hub/database/vars"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
 )

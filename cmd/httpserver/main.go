@@ -7,8 +7,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/flashbots/builder-config-hub/common"
-	"github.com/flashbots/builder-config-hub/httpserver"
+	"github.com/flashbots/builder-hub/common"
+	"github.com/flashbots/builder-hub/httpserver"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2" // imports as package "cli"
 )
