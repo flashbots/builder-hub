@@ -52,22 +52,22 @@
         }
         ],
         "lighthouse_metrics": {
-        "enabled": true,
-        "targets": [
-            "localhost:5054"
-        ]
+            "enabled": true,
+            "targets": [
+                "localhost:5054"
+            ]
         },
         "reth_metrics": {
-        "enabled": true,
-        "targets": [
-            "localhost:9001"
-        ]
+            "enabled": true,
+            "targets": [
+                "localhost:9001"
+            ]
         },
         "rbuilder_metrics": {
-        "enabled": true,
-        "targets": [
-            "localhost:6069"
-        ]
+            "enabled": true,
+            "targets": [
+                "localhost:6069"
+            ]
         },
         "remote_write": [
         {
