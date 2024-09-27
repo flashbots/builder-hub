@@ -105,6 +105,12 @@ func main() {
 				return err
 			}
 
+			err = srv.LoadMockResponses()
+			if err != nil {
+				cfg.Log.Error("failed to load mock responses", "err", err)
+				return err
+			}
+
 			exit := make(chan os.Signal, 1)
 			signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 			srv.RunInBackground()
