@@ -70,13 +70,14 @@ func (srv *Server) getRouter() http.Handler {
 	mux.Get("/drain", srv.handleDrain)
 	mux.Get("/undrain", srv.handleUndrain)
 
+	// Dev
 	mux.Get("/test-panic", srv.handleTestPanic)
 
 	// BuilderConfigHub API: https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87?pvs=4#10a6b4a0d87680fd81e0cad9bac3b8c5
-	mux.Get("/api/v1/measurements", srv.handleGetMeasurements)
-	mux.Get("/api/v1/auth-client-atls/configuration", srv.handleGetConfiguration)
-	mux.Get("/api/v1/auth-client-atls/builders", srv.handleGetBuilders)
-	mux.Post("/api/v1/auth-client-atls/register_credentials/{service}", srv.handleRegisterCredentials)
+	mux.Get("/api/l1-builder/v1/measurements", srv.handleGetMeasurements)
+	mux.Get("/api/l1-builder/v1/configuration", srv.handleGetConfiguration)
+	mux.Get("/api/l1-builder/v1/builders", srv.handleGetBuilders)
+	mux.Post("/api/l1-builder/v1/register_credentials/{service}", srv.handleRegisterCredentials)
 
 	if srv.cfg.EnablePprof {
 		srv.log.Info("pprof API enabled")

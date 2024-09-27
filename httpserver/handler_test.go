@@ -106,10 +106,10 @@ func Test_Handlers_BuilderConfigHub(t *testing.T) {
 		payload []byte
 	}{
 		// BuilderConfigHub API: https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87?pvs=4#10a6b4a0d87680fd81e0cad9bac3b8c5
-		{http.MethodGet, "/api/v1/measurements", nil},
-		{http.MethodGet, "/api/v1/auth-client-atls/configuration", nil},
-		{http.MethodGet, "/api/v1/auth-client-atls/builders", nil},
-		{http.MethodPost, "/api/v1/auth-client-atls/register_credentials/rbuilder", []byte(`{"var1":"foo"}`)},
+		{http.MethodGet, "/api/l1-builder/v1/measurements", nil},
+		{http.MethodGet, "/api/l1-builder/v1/configuration", nil},
+		{http.MethodGet, "/api/l1-builder/v1/builders", nil},
+		{http.MethodPost, "/api/l1-builder/v1/register_credentials/rbuilder", []byte(`{"var1":"foo"}`)},
 	}
 
 	srv, err := NewHTTPServer(testServerConfig)
