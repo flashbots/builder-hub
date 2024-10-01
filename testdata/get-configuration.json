@@ -1,8 +1,11 @@
 {
-    "reth_chain_downloader": {
+    "reth_chain_download": {
         "aws_access_key_id": "string",
         "aws_secret_access_key": "string",
         "rclone_s3_endpoint": "string"
+    },
+    "bidding_service_download": {
+        "github_token": "string"
     },
     "orderflow_proxy": {
         "flashbots_of_signing_key": "0x00",
@@ -19,6 +22,7 @@
         "relay_secret_key": "0x00",
         "optimistic_relay_secret_key": "0x00",
         "coinbase_secret_key": "0x00",
+        "top_bid_stream_api_key": "string",
         "always_seal": true,
         "relays": [
             {
@@ -42,14 +46,14 @@
     "prometheus": {
         "scrape_interval": "10s",
         "static_configs_default_labels": [
-        {
-            "label_key": "flashbots_net_vendor",
-            "label_value": "azure"
-        },
-        {
-            "label_key": "flashbots_net_chain",
-            "label_value": "mainnet"
-        }
+            {
+                "label_key": "flashbots_net_vendor",
+                "label_value": "azure"
+            },
+            {
+                "label_key": "flashbots_net_chain",
+                "label_value": "mainnet"
+            }
         ],
         "lighthouse_metrics": {
             "enabled": true,
@@ -70,32 +74,32 @@
             ]
         },
         "remote_write": [
-        {
-            "name": "tdx-rbuilder-collector",
-            "url": "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write"
-        }
+            {
+                "name": "tdx-rbuilder-collector",
+                "url": "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write"
+            }
         ]
     },
     "process_exporter": {
         "process_names": [
-          {
-            "name": "lighthouse",
-            "cmdline": [
-              "^\\/([-.0-9a-zA-Z]+\\/)*lighthouse[-.0-9a-zA-Z]* "
-            ]
-          },
-          {
-            "name": "rbuilder",
-            "cmdline": [
-              "^\\/([-.0-9a-zA-Z]+\\/)*rbuilder[-.0-9a-zA-Z]* "
-            ]
-          },
-          {
-            "name": "reth",
-            "cmdline": [
-              "^\\/([-.0-9a-zA-Z]+\\/)*reth[-.0-9a-zA-Z]* "
-            ]
-          }
+            {
+                "name": "lighthouse",
+                "cmdline": [
+                    "^\\/([-.0-9a-zA-Z]+\\/)*lighthouse[-.0-9a-zA-Z]* "
+                ]
+            },
+            {
+                "name": "rbuilder",
+                "cmdline": [
+                    "^\\/([-.0-9a-zA-Z]+\\/)*rbuilder[-.0-9a-zA-Z]* "
+                ]
+            },
+            {
+                "name": "reth",
+                "cmdline": [
+                    "^\\/([-.0-9a-zA-Z]+\\/)*reth[-.0-9a-zA-Z]* "
+                ]
+            }
         ]
     },
     "fluentbit": {
