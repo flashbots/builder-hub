@@ -16,7 +16,7 @@
 
 # IDE
 .vscode
-
+.idea
 # Builds
 /build
 .aider*
