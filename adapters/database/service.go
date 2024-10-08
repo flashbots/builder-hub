@@ -3,7 +3,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/flashbots/builder-hub/domain"
@@ -34,111 +36,7 @@ func (s *Service) Close() error {
 	return s.DB.Close()
 }
 
-//
-//// GetAllowedMeasurements retrieves all active measurements
-//func (s *Service) GetAllowedMeasurements() ([]Measurement, error) {
-//	var measurements []Measurement
-//	err := s.DB.Select(&measurements, `
-//        SELECT id, measurement
-//        FROM measurements_whitelist
-//        WHERE is_active = true
-//    `)
-//	return measurements, err
-//}
-//
-//// GetActiveBuilders retrieves all active builders with their IPs and public keys
-//func (s *Service) GetActiveBuilders() ([]ActiveBuilder, error) {
-//	var builders []ActiveBuilder
-//	err := s.DB.Select(&builders, `
-//        SELECT b.id AS builder_id, b.name, iw.ip_address, scr.tls_pubkey, scr.ecdsa_pubkey
-//        FROM builders b
-//        JOIN ip_whitelist iw ON b.id = iw.builder_id
-//        JOIN service_credential_registrations scr ON iw.id = scr.ip_whitelist_id
-//        WHERE iw.is_active = true AND scr.service = 'builder'
-//    `)
-//	return builders, err
-//}
-//
-//// GetConfigByIP retrieves the config for a builder based on their IP address
-//func (s *Service) GetConfigByIP(ip string) (BuilderConfig, error) {
-//	var config BuilderConfig
-//	err := s.DB.Get(&config, `
-//        SELECT bc.builder_id, bc.config
-//        FROM builder_configs bc
-//        JOIN ip_whitelist iw ON bc.builder_id = iw.builder_id
-//        WHERE iw.ip_address = $1 AND iw.is_active = true AND bc.is_active = true
-//    `, ip)
-//	return config, err
-//}
-//
-//// RegisterNewCredentials registers new credentials for a service
-//func (s *Service) RegisterNewCredentials(ip, service string, tlsPubKey, ecdsaPubKey []byte) error {
-//	_, err := s.DB.Exec(`
-//        INSERT INTO service_credential_registrations (ip_whitelist_id, service, tls_pubkey, ecdsa_pubkey)
-//        SELECT id, $2, $3, $4
-//        FROM ip_whitelist
-//        WHERE ip_address = $1 AND is_active = true
-//    `, ip, service, tlsPubKey, ecdsaPubKey)
-//	return err
-//}
-//
-//// GetBuilderByIP retrieves an active builder by their IP address
-//func (s *Service) GetActiveBuilderByIP(ip net.IP) (*ActiveBuilder, error) {
-//	var paramIP pgtype.Inet
-//	err := paramIP.Set(ip)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	var builder ActiveBuilder
-//	err = s.DB.Get(&builder, `
-//        SELECT b.id AS builder_id, b.name, iw.ip_address, scr.tls_pubkey, scr.ecdsa_pubkey
-//        FROM builders b
-//        JOIN ip_whitelist iw ON b.id = iw.builder_id
-//        JOIN service_credential_registrations scr ON iw.id = scr.ip_whitelist_id
-//        WHERE iw.ip_address = $1 AND iw.is_active = true AND scr.service = 'builder'
-//    `, paramIP)
-//
-//	if err != nil {
-//		return nil, fmt.Errorf("error getting builder by IP: %w", err)
-//	}
-//
-//	return &builder, nil
-//}
-//
-//type IPWhitelistEntry struct {
-//	BuilderID int         `db:"builder_id"`
-//	IPAddress pgtype.Inet `db:"ip_address"`
-//	IsActive  bool        `db:"is_active"`
-//	ValidFrom time.Time   `db:"valid_from"`
-//	ValidTo   *time.Time  `db:"valid_to"`
-//}
-//
-//// use for validation if needed
-//func (s *Service) GetIPWhitelistByIP(ip net.IP) (*IPWhitelistEntry, error) {
-//
-//	var paramIP pgtype.Inet
-//	err := paramIP.Set(ip)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	var entry IPWhitelistEntry
-//	err = s.DB.Get(&entry, `
-//        SELECT builder_id, ip_address, is_active, valid_from, valid_to
-//        FROM ip_whitelist
-//        WHERE ip_address = $1
-//    `, paramIP)
-//
-//	if err != nil {
-//		return nil, fmt.Errorf("error getting IP whitelist entry: %w", err)
-//	}
-//
-//	//entry.IPAddress.IPNet.IP
-//	return &entry, nil
-//}
-
-// GetMeasurementByOIDAndHash retrieves a measurement by OID and hash
+// GetMeasurementByTypeAndHash retrieves a measurement by OID and hash
 func (s *Service) GetMeasurementByTypeAndHash(attestationType string, hash []byte) (*domain.Measurement, error) {
 	var m Measurement
 	err := s.DB.Get(&m, `
@@ -188,20 +86,11 @@ func (s *Service) GetActiveMeasurements(ctx context.Context) ([]domain.Measureme
 	return domainMeasurements, err
 }
 
-// GetActiveBuilders retrieves all active builders
-func (s *Service) GetActiveBuilders() ([]Builder, error) {
-	var builders []Builder
-	err := s.DB.Select(&builders, `
-		SELECT * FROM builders
-		WHERE is_active = true AND deprecated_at IS NULL
-	`)
-	return builders, err
-}
-
 // RegisterCredentialsForBuilder registers new credentials for a builder, deprecating all previous credentials
-func (s *Service) RegisterCredentialsForBuilder(builderName, service, tlsCert string, ecdsaPubKey []byte) error {
+// It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
+func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey, measurementHash []byte, attestationType string) error {
 	// Start a transaction
-	tx, err := s.DB.Begin()
+	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -210,14 +99,14 @@ func (s *Service) RegisterCredentialsForBuilder(builderName, service, tlsCert st
 	// Deprecate all previous credentials for this builder and service
 	_, err = tx.Exec(`
         UPDATE service_credential_registrations
-        SET is_active = false
+        SET is_active = false, deprecated_at = NOW()
         WHERE builder_name = $1 AND service = $2
     `, builderName, service)
 	if err != nil {
 		return err
 	}
 
-	// Insert new credentials
+	// Insert new credentials with a subquery to fetch the measurement_id
 	var nullableTLSCert sql.NullString
 	if tlsCert != "" {
 		nullableTLSCert = sql.NullString{String: tlsCert, Valid: true}
@@ -225,11 +114,13 @@ func (s *Service) RegisterCredentialsForBuilder(builderName, service, tlsCert st
 
 	_, err = tx.Exec(`
         INSERT INTO service_credential_registrations 
-        (builder_name, service, tls_cert, ecdsa_pubkey, is_active)
-        VALUES ($1, $2, $3, $4, true)
-    `, builderName, service, nullableTLSCert, ecdsaPubKey)
+        (builder_name, service, tls_cert, ecdsa_pubkey, is_active, measurement_id)
+        VALUES ($1, $2, $3, $4, true, 
+            (SELECT id FROM measurements_whitelist WHERE hash = $5 AND attestation_type = $6)
+        )
+    `, builderName, service, nullableTLSCert, ecdsaPubKey, measurementHash, attestationType)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to insert credentials for builder %s: %w", builderName, err)
 	}
 
 	// Commit the transaction
@@ -241,17 +132,17 @@ func (s *Service) RegisterCredentialsForBuilder(builderName, service, tlsCert st
 }
 
 // GetActiveConfigForBuilder retrieves the active config for a builder by name
-func (s *Service) GetActiveConfigForBuilder(builderName string) (*BuilderConfig, error) {
+func (s *Service) GetActiveConfigForBuilder(ctx context.Context, builderName string) (json.RawMessage, error) {
 	var config BuilderConfig
-	err := s.DB.Get(&config, `
+	err := s.DB.GetContext(ctx, &config, `
 		SELECT * FROM builder_configs
 		WHERE builder_name = $1 AND is_active = true
 	`, builderName)
-	return &config, err
+	return config.Config, err
 }
 
 func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) ([]domain.BuilderWithServices, error) {
-	rows, err := s.DB.Query(`
+	rows, err := s.DB.QueryContext(ctx, `
         SELECT 
             b.name,
             b.ip_address,
@@ -276,7 +167,8 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) (
 
 	for rows.Next() {
 		var ipAddress pgtype.Inet
-		var builderName, service string
+		var builderName string
+		var service sql.NullString
 		var tlsCert sql.NullString
 		var ecdsaPubKey []byte
 
@@ -294,9 +186,9 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) (
 			buildersMap[builderName] = builder
 		}
 
-		if service != "" {
+		if service.Valid {
 			builder.Credentials = append(builder.Credentials, ServiceCredential{
-				Service:     service,
+				Service:     service.String,
 				TLSCert:     tlsCert,
 				ECDSAPubKey: ecdsaPubKey,
 			})
@@ -320,65 +212,20 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) (
 	return builders, nil
 }
 
-//
-//// GetActiveBuildersWithCredentials retrieves all active builders along with their active service credentials
-//func (s *Service) GetActiveBuildersServices(ctx context.Context) ([]domain.BuilderWithServices, error) {
-//	rows, err := s.DB.QueryContext(ctx, `
-//        SELECT
-//            b.name,
-//            b.ip_address,
-//            json_agg(
-//                json_build_object(
-//                    'service', scr.service,
-//                    'tls_cert', scr.tls_cert,
-//                    'ecdsa_pubkey', encode(scr.ecdsa_pubkey, 'base64')
-//                )
-//            ) AS credentials
-//        FROM
-//            builders b
-//        LEFT JOIN
-//            service_credential_registrations scr ON b.name = scr.builder_name
-//        WHERE
-//            b.is_active = true AND scr.is_active = true
-//        GROUP BY
-//            b.name, b.ip_address
-//    `)
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer rows.Close()
-//
-//	var builders []BuilderWithCredentials
-//	for rows.Next() {
-//		var builder BuilderWithCredentials
-//		var credentialsJSON []byte
-//		err := rows.Scan(&builder.Name, &builder.IPAddress, &credentialsJSON)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		if credentialsJSON != nil {
-//			err = json.Unmarshal(credentialsJSON, &builder.Credentials)
-//			if err != nil {
-//				return nil, err
-//			}
-//		}
-//
-//		builders = append(builders, builder)
-//	}
-//
-//	if err = rows.Err(); err != nil {
-//		return nil, err
-//	}
-//
-//	var dBuilders []domain.BuilderWithServices
-//	for _, b := range builders {
-//		dBuilder, err := toDomainBuilderWithCredentials(b)
-//		if err != nil {
-//			return nil, err
-//		}
-//		dBuilders = append(dBuilders, *dBuilder)
-//	}
-//
-//	return dBuilders, nil
-//}
+// LogEvent creates a new log entry in the event_log table.
+// It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
+func (s *Service) LogEvent(ctx context.Context, eventName, builderName, hash, attestationType string) error {
+	// Insert new event log entry with a subquery to fetch the measurement_id
+	_, err := s.DB.ExecContext(ctx, `
+        INSERT INTO event_log 
+        (event_name, builder_name, measurement_id)
+        VALUES ($1, $2, 
+            (SELECT id FROM measurements_whitelist WHERE hash = $3 AND attestation_type = $4)
+        )
+    `, eventName, builderName, hash, attestationType)
+	if err != nil {
+		return fmt.Errorf("failed to insert event log for builder %s: %w", builderName, err)
+	}
+
+	return nil
+}

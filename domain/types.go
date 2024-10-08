@@ -15,18 +15,22 @@ var (
 type Measurement struct {
 	Hash            []byte
 	AttestationType string
-	Measurement     map[string]string
+	Measurement     map[string]SingleMeasurement
+}
+
+type SingleMeasurement struct {
+	Expected string `json:"expected"`
 }
 
 // CalculateHash calculates the sha256 hash of the given measurements
 // cat measurements.json | jq --sort-keys --compact-output --join-output| sha256sum
-func CalculateHash(measurements map[string]string) []byte {
+func CalculateHash(measurements map[string]SingleMeasurement) []byte {
 	bts, _ := json.Marshal(measurements)
 	resp := sha256.Sum256(bts)
 	return resp[:]
 }
 
-func NewMeasurement(attestationType string, measurements map[string]string) *Measurement {
+func NewMeasurement(attestationType string, measurements map[string]SingleMeasurement) *Measurement {
 	return &Measurement{
 		AttestationType: attestationType,
 		Measurement:     measurements,

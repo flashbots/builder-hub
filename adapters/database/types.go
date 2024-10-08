@@ -18,6 +18,7 @@ type ActiveBuilder struct {
 }
 
 type Measurement struct {
+	ID              int             `db:"id"`
 	Hash            []byte          `db:"hash"`
 	AttestationType string          `db:"attestation_type"`
 	Measurement     json.RawMessage `db:"measurement"`
@@ -30,7 +31,7 @@ type Measurement struct {
 func convertMeasurementToDomain(measurement Measurement) (*domain.Measurement, error) {
 	var m domain.Measurement
 	m.AttestationType = measurement.AttestationType
-	m.Measurement = make(map[string]string)
+	m.Measurement = make(map[string]domain.SingleMeasurement)
 	err := json.Unmarshal(measurement.Measurement, &m.Measurement)
 	if err != nil {
 		return nil, err
@@ -104,6 +105,7 @@ func toDomainBuilderWithCredentials(builder BuilderWithCredentials) (*domain.Bui
 		s.Services = append(s.Services, domain.BuilderServices{
 			TLSCert:     cred.TLSCert.String,
 			ECDSAPubKey: cred.ECDSAPubKey,
+			Service:     cred.Service,
 		})
 	}
 	return &s, nil

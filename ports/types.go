@@ -62,9 +62,9 @@ func fromDomainBuilderWithServices(builder *domain.BuilderWithServices) BuilderW
 }
 
 type Measurement struct {
-	Hash            string            `json:"measurement_hash"`
-	AttestationType string            `json:"attestation_type"`
-	Measurement     map[string]string `json:"measurement"`
+	Hash            string                              `json:"measurement_hash"`
+	AttestationType string                              `json:"attestation_type"`
+	Measurement     map[string]domain.SingleMeasurement `json:"measurement"`
 }
 
 func fromDomainMeasurement(measurement *domain.Measurement) Measurement {

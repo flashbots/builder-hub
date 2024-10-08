@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flashbots/builder-hub/adapters/database"
+	"github.com/flashbots/builder-hub/adapters/secrets"
 	"github.com/flashbots/builder-hub/application"
 	"github.com/flashbots/builder-hub/common"
 	"github.com/flashbots/builder-hub/httpserver"
@@ -18,9 +19,10 @@ import (
 
 var flags = []cli.Flag{
 	&cli.StringFlag{
-		Name:  "listen-addr",
-		Value: "127.0.0.1:8080",
-		Usage: "address to serve API",
+		Name:    "listen-addr",
+		Value:   "127.0.0.1:8080",
+		Usage:   "address to serve API",
+		EnvVars: []string{"LISTEN_ADDR"},
 	},
 	&cli.StringFlag{
 		Name:  "metrics-addr",
@@ -63,6 +65,12 @@ var flags = []cli.Flag{
 		Usage:   "Postgres DSN",
 		EnvVars: []string{"POSTGRES_DSN"},
 	},
+	&cli.StringFlag{
+		Name:    "secret-name",
+		Value:   "",
+		Usage:   "AWS Secret name",
+		EnvVars: []string{"AWS_SECRET_NAME"},
+	},
 }
 
 func main() {
@@ -101,7 +109,13 @@ func main() {
 				return err
 			}
 			defer db.Close()
-			builderHub := application.NewBuilderHub(db)
+
+			sm, err := secrets.NewService(cCtx.String("secret-name"))
+			if err != nil {
+				log.Error("failed to create secrets manager", "err", err)
+				return err
+			}
+			builderHub := application.NewBuilderHub(db, sm)
 			builderHandler := ports.NewBuilderHubHandler(builderHub, log)
 
 			cfg := &httpserver.HTTPServerConfig{
@@ -119,12 +133,6 @@ func main() {
 			srv, err := httpserver.NewHTTPServer(cfg, builderHandler)
 			if err != nil {
 				cfg.Log.Error("failed to create server", "err", err)
-				return err
-			}
-
-			err = srv.LoadMockResponses()
-			if err != nil {
-				cfg.Log.Error("failed to load mock responses", "err", err)
 				return err
 			}
 
