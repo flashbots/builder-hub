@@ -25,4 +25,5 @@ RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 WORKDIR /app
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /build/builder-hub /app/builder-hub
+ADD testdata/ /app/testdata/
 CMD ["/app/builder-hub"]
