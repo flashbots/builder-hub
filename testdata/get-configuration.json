@@ -24,7 +24,6 @@
         "relay_secret_key": "0x00",
         "optimistic_relay_secret_key": "0x00",
         "coinbase_secret_key": "0x00",
-        "top_bid_stream_api_key": "string",
         "relays": [
             {
                 "name": "flashbots",
