@@ -1,8 +1,9 @@
 {
-    "reth_chain_download": {
-        "aws_access_key_id": "string",
-        "aws_secret_access_key": "string",
-        "rclone_s3_endpoint": "string"
+    "rclone": {
+        "__version": "v1.66.0-DEV",
+        "access_key_id": "string",
+        "secret_access_key": "string",
+        "bucket_endpoint": "string"
     },
     "bidding_service_download": {
         "github_token": "string"
@@ -18,12 +19,12 @@
         ]
     },
     "rbuilder": {
+        "__version": "v0.1.0-26-g18875a4",
         "extra_data": "Illuminate Dmocratize Dstribute",
         "relay_secret_key": "0x00",
         "optimistic_relay_secret_key": "0x00",
         "coinbase_secret_key": "0x00",
         "top_bid_stream_api_key": "string",
-        "always_seal": true,
         "relays": [
             {
                 "name": "flashbots",
@@ -44,6 +45,7 @@
         ]
     },
     "prometheus": {
+        "__version": "2.54.0",
         "scrape_interval": "10s",
         "static_configs_default_labels": [
             {
@@ -81,6 +83,7 @@
         ]
     },
     "process_exporter": {
+        "__version": "0.8.3",
         "process_names": [
             {
                 "name": "lighthouse",
@@ -103,6 +106,7 @@
         ]
     },
     "fluentbit": {
+        "__version": "v1.9.7",
         "input_tags": "tag-1 tag-2",
         "output_cw_log_group_name": "multioperator-builder",
         "output_cw_log_stream_prefix": "builder-01-"
