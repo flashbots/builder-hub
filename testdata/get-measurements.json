@@ -1,7 +1,7 @@
 [
     {
+        "measurement_id": "v1.2.3-20241010-rc1",
         "attestation_type": "azure-tdx",
-        "measurements_hash": "9ec3e12afc1c4adde73f44d3ed2d130a65617683aea07fb837d5f0c38c08c744",
         "measurements": {
             "8": {
                 "expected": "0000000000000000000000000000000000000000000000000000000000000000"
@@ -27,8 +27,8 @@
         }
     },
     {
+        "measurement_id": "foobar123",
         "attestation_type": "azure-tdx",
-        "measurements_hash": "6008c2d574a7af580695fd2be5d4a6ae973fd435bb66fe5dc22c7c381e8558b0",
         "measurements": {
             "8": {
                 "expected": "0000000000000000000000000000000000000000000000000000000000000000"
