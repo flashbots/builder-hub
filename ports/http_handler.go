@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/flashbots/builder-hub/domain"
 	"github.com/go-chi/chi/v5"
@@ -52,8 +53,12 @@ func (bhs *BuilderHubHandler) getAuthData(r *http.Request) (*AuthData, error) {
 	if len(ipHeaders) == 0 {
 		return nil, fmt.Errorf("ip header is empty %w", ErrInvalidAuthData)
 	}
-	bhs.log.Info("ip headers", "headers", ipHeaders)
+	//NOTE: we need this quite awkward logic since header comes not in the canonical format, with space.
 	ipHeader := ipHeaders[len(ipHeaders)-1]
+	ipHeaders = strings.Split(ipHeader, ",")
+	ipHeader = ipHeaders[len(ipHeaders)-1]
+	ipHeader = strings.TrimSpace(ipHeader)
+
 	ip := net.ParseIP(ipHeader)
 	if ip == nil {
 		return nil, fmt.Errorf("failed to parse ip %s %w", ipHeader, ErrInvalidAuthData)
