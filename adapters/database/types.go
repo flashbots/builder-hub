@@ -19,7 +19,7 @@ type ActiveBuilder struct {
 
 type Measurement struct {
 	ID              int             `db:"id"`
-	Hash            []byte          `db:"hash"`
+	Name            string          `db:"name"`
 	AttestationType string          `db:"attestation_type"`
 	Measurement     json.RawMessage `db:"measurement"`
 	IsActive        bool            `db:"is_active"`
@@ -36,7 +36,7 @@ func convertMeasurementToDomain(measurement Measurement) (*domain.Measurement, e
 	if err != nil {
 		return nil, err
 	}
-	m.Hash = measurement.Hash
+	m.Name = measurement.Name
 	return &m, nil
 }
 

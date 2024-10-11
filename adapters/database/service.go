@@ -37,16 +37,18 @@ func (s *Service) Close() error {
 }
 
 // GetMeasurementByTypeAndHash retrieves a measurement by OID and hash
-func (s *Service) GetMeasurementByTypeAndHash(attestationType string, hash []byte) (*domain.Measurement, error) {
-	var m Measurement
-	err := s.DB.Get(&m, `
-		SELECT * FROM measurements_whitelist
-		WHERE attestation_type = $1 AND hash = $2 AND is_active = true
-	`, attestationType, hash)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, domain.ErrNotFound
+func (s *Service) GetActiveMeasurementsByType(ctx context.Context, attestationType string) ([]domain.Measurement, error) {
+	var measurements []Measurement
+	err := s.DB.SelectContext(ctx, &measurements, `SELECT * FROM measurements_whitelist WHERE is_active=true AND attestation_type=$1`, attestationType)
+	var domainMeasurements []domain.Measurement
+	for _, m := range measurements {
+		domainM, err := convertMeasurementToDomain(m)
+		if err != nil {
+			return nil, err
+		}
+		domainMeasurements = append(domainMeasurements, *domainM)
 	}
-	return convertMeasurementToDomain(m)
+	return domainMeasurements, err
 }
 
 // GetBuilderByIP retrieves a builder by IP address
@@ -88,7 +90,7 @@ func (s *Service) GetActiveMeasurements(ctx context.Context) ([]domain.Measureme
 
 // RegisterCredentialsForBuilder registers new credentials for a builder, deprecating all previous credentials
 // It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
-func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey, measurementHash []byte, attestationType string) error {
+func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName string, attestationType string) error {
 	// Start a transaction
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -116,9 +118,9 @@ func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName
         INSERT INTO service_credential_registrations 
         (builder_name, service, tls_cert, ecdsa_pubkey, is_active, measurement_id)
         VALUES ($1, $2, $3, $4, true, 
-            (SELECT id FROM measurements_whitelist WHERE hash = $5 AND attestation_type = $6)
+            (SELECT id FROM measurements_whitelist WHERE name = $5 AND attestation_type = $6)
         )
-    `, builderName, service, nullableTLSCert, ecdsaPubKey, measurementHash, attestationType)
+    `, builderName, service, nullableTLSCert, ecdsaPubKey, measurementName, attestationType)
 	if err != nil {
 		return fmt.Errorf("failed to insert credentials for builder %s: %w", builderName, err)
 	}

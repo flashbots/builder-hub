@@ -35,7 +35,7 @@ EXECUTE FUNCTION update_builders_updated_at();
 CREATE TABLE measurements_whitelist
 (
     id               SERIAL PRIMARY KEY,                -- new serial primary key
-    hash             BYTEA                    NOT NULL, -- hash of the measurement
+    name             TEXT                     NOT NULL, -- hash of the measurement
     attestation_type TEXT                     NOT NULL, -- attestation type of the measurement
     measurement      JSONB                    NOT NULL,
     is_active        BOOLEAN                  NOT NULL DEFAULT true,
@@ -49,7 +49,7 @@ CREATE TABLE measurements_whitelist
             (is_active = false)
         ),
 
-    CONSTRAINT unique_hash_attestation_type UNIQUE (hash, attestation_type)
+    CONSTRAINT unique_hash_attestation_type UNIQUE (name, attestation_type)
 );
 
 
@@ -74,15 +74,6 @@ CREATE UNIQUE INDEX idx_unique_active_credential_per_builder_service
     ON service_credential_registrations (builder_name, service)
     WHERE is_active = true;
 
--- Trigger to automatically update the updated_at timestamp
-CREATE OR REPLACE FUNCTION update_service_credential_registrations_updated_at()
-    RETURNS TRIGGER AS
-$$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_update_service_credential_registrations_updated_at
     BEFORE UPDATE

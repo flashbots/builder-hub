@@ -30,9 +30,10 @@ var flags = []cli.Flag{
 		Usage: "address to serve Prometheus metrics",
 	},
 	&cli.BoolFlag{
-		Name:  "log-json",
-		Value: false,
-		Usage: "log in JSON format",
+		Name:    "log-json",
+		Value:   false,
+		Usage:   "log in JSON format",
+		EnvVars: []string{"LOG_JSON"},
 	},
 	&cli.BoolFlag{
 		Name:  "log-debug",

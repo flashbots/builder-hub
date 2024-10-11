@@ -18,9 +18,9 @@ import (
 type BuilderHubService interface {
 	GetAllowedMeasurements(ctx context.Context) ([]domain.Measurement, error)
 	GetActiveBuilders(ctx context.Context) ([]domain.BuilderWithServices, error)
-	VerifyIpAndMeasurements(ctx context.Context, ip net.IP, measurement *domain.Measurement) (*domain.Builder, error)
+	VerifyIpAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error)
 	GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error)
-	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey, measurementHash []byte, attestationType string) error
+	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName string, attestationType string) error
 }
 type BuilderHubHandler struct {
 	builderHubService BuilderHubService
@@ -33,7 +33,7 @@ func NewBuilderHubHandler(builderHubService BuilderHubService, log *httplog.Logg
 
 type AuthData struct {
 	AttestationType string
-	MeasurementData map[string]domain.SingleMeasurement
+	MeasurementData map[string]string
 	IP              net.IP
 }
 
@@ -43,15 +43,20 @@ func (bhs *BuilderHubHandler) getAuthData(r *http.Request) (*AuthData, error) {
 		return nil, fmt.Errorf("attestation type is empty %w", ErrInvalidAuthData)
 	}
 	measurementHeader := r.Header.Get(MeasurementHeader)
-	measurementData := make(map[string]domain.SingleMeasurement)
+	measurementData := make(map[string]string)
 	err := json.Unmarshal([]byte(measurementHeader), &measurementData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal measurement header %w", ErrInvalidAuthData)
 	}
-	ipHeader := r.Header.Get(ForwardedHeader)
+	ipHeaders := r.Header.Values(ForwardedHeader)
+	if len(ipHeaders) == 0 {
+		return nil, fmt.Errorf("ip header is empty %w", ErrInvalidAuthData)
+	}
+	bhs.log.Info("ip headers", "headers", ipHeaders)
+	ipHeader := ipHeaders[len(ipHeaders)-1]
 	ip := net.ParseIP(ipHeader)
 	if ip == nil {
-		return nil, fmt.Errorf("failed to parse ip %w", ErrInvalidAuthData)
+		return nil, fmt.Errorf("failed to parse ip %s %w", ipHeader, ErrInvalidAuthData)
 	}
 
 	return &AuthData{
@@ -98,7 +103,7 @@ func (bhs *BuilderHubHandler) GetActiveBuilders(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	_, err = bhs.builderHubService.VerifyIpAndMeasurements(r.Context(), authData.IP, domain.NewMeasurement(authData.AttestationType, authData.MeasurementData))
+	_, _, err = bhs.builderHubService.VerifyIpAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
 	if errors.Is(err, domain.ErrNotFound) {
 		bhs.log.Warn("invalid auth data", "error", err)
 		w.WriteHeader(http.StatusForbidden)
@@ -163,7 +168,7 @@ func (bhs *BuilderHubHandler) GetConfigSecrets(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	builder, err := bhs.builderHubService.VerifyIpAndMeasurements(r.Context(), authData.IP, domain.NewMeasurement(authData.AttestationType, authData.MeasurementData))
+	builder, _, err := bhs.builderHubService.VerifyIpAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
 	if errors.Is(err, domain.ErrNotFound) {
 		bhs.log.Warn("invalid auth data", "error", err)
 		w.WriteHeader(http.StatusForbidden)
@@ -188,11 +193,15 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	measurement := domain.NewMeasurement(authData.AttestationType, authData.MeasurementData)
-	builder, err := bhs.builderHubService.VerifyIpAndMeasurements(r.Context(), authData.IP, measurement)
+	builder, measurementName, err := bhs.builderHubService.VerifyIpAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
 	if errors.Is(err, domain.ErrNotFound) {
 		bhs.log.Warn("invalid auth data", "error", err)
 		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	if err != nil {
+		bhs.log.Error("failed to verify ip and measurements", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -224,7 +233,7 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, sc.TlsCert, ecdsaBytes, measurement.Hash, measurement.AttestationType)
+	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, sc.TlsCert, ecdsaBytes, measurementName, authData.AttestationType)
 	if err != nil {
 		bhs.log.Error("Failed to register credentials", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)

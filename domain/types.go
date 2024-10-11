@@ -1,19 +1,18 @@
 package domain
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"net"
 )
 
 var (
-	ErrNotFound         = fmt.Errorf("not found")
-	ErrIncorrectBuilder = fmt.Errorf("incorrect builder")
+	ErrNotFound           = fmt.Errorf("not found")
+	ErrIncorrectBuilder   = fmt.Errorf("incorrect builder")
+	ErrInvalidMeasurement = fmt.Errorf("no such active measurement found")
 )
 
 type Measurement struct {
-	Hash            []byte
+	Name            string
 	AttestationType string
 	Measurement     map[string]SingleMeasurement
 }
@@ -22,19 +21,11 @@ type SingleMeasurement struct {
 	Expected string `json:"expected"`
 }
 
-// CalculateHash calculates the sha256 hash of the given measurements
-// cat measurements.json | jq --sort-keys --compact-output --join-output| sha256sum
-func CalculateHash(measurements map[string]SingleMeasurement) []byte {
-	bts, _ := json.Marshal(measurements)
-	resp := sha256.Sum256(bts)
-	return resp[:]
-}
-
-func NewMeasurement(attestationType string, measurements map[string]SingleMeasurement) *Measurement {
+func NewMeasurement(name, attestationType string, measurements map[string]SingleMeasurement) *Measurement {
 	return &Measurement{
 		AttestationType: attestationType,
 		Measurement:     measurements,
-		Hash:            CalculateHash(measurements),
+		Name:            name,
 	}
 }
 
