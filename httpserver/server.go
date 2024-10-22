@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flashbots/builder-hub/metrics"
+	"github.com/flashbots/builder-hub/ports"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
@@ -27,9 +28,10 @@ type HTTPServerConfig struct {
 }
 
 type Server struct {
-	cfg     *HTTPServerConfig
-	isReady atomic.Bool
-	log     *httplog.Logger
+	cfg        *HTTPServerConfig
+	isReady    atomic.Bool
+	log        *httplog.Logger
+	appHandler *ports.BuilderHubHandler
 
 	srv        *http.Server
 	metricsSrv *metrics.MetricsServer
@@ -39,10 +41,11 @@ type Server struct {
 	mockGetMeasurementsResponse string
 }
 
-func NewHTTPServer(cfg *HTTPServerConfig) (srv *Server, err error) {
+func NewHTTPServer(cfg *HTTPServerConfig, appHandler *ports.BuilderHubHandler) (srv *Server, err error) {
 	srv = &Server{
 		cfg:        cfg,
 		log:        cfg.Log,
+		appHandler: appHandler,
 		srv:        nil,
 		metricsSrv: metrics.NewMetricsServer(cfg.MetricsAddr, nil),
 	}
@@ -74,10 +77,11 @@ func (srv *Server) getRouter() http.Handler {
 	mux.Get("/test-panic", srv.handleTestPanic)
 
 	// BuilderConfigHub API: https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87?pvs=4#10a6b4a0d87680fd81e0cad9bac3b8c5
-	mux.Get("/api/l1-builder/v1/measurements", srv.handleGetMeasurements)
-	mux.Get("/api/l1-builder/v1/configuration", srv.handleGetConfiguration)
-	mux.Get("/api/l1-builder/v1/builders", srv.handleGetBuilders)
-	mux.Post("/api/l1-builder/v1/register_credentials/{service}", srv.handleRegisterCredentials)
+	mux.Get("/api/l1-builder/v1/measurements", srv.appHandler.GetAllowedMeasurements)
+	mux.Get("/api/l1-builder/v1/configuration", srv.appHandler.GetConfigSecrets)
+	mux.Get("/api/l1-builder/v1/builders", srv.appHandler.GetActiveBuilders)
+	mux.Post("/api/l1-builder/v1/register_credentials/{service}", srv.appHandler.RegisterCredentials)
+	mux.Get("/api/internal/l1-builder/v1/builders", srv.appHandler.GetActiveBuildersNoAuth)
 
 	if srv.cfg.EnablePprof {
 		srv.log.Info("pprof API enabled")

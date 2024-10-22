@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/flashbots/builder-hub/common"
+	"github.com/flashbots/builder-hub/ports"
 	"github.com/go-chi/httplog/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +37,7 @@ func Test_Handlers_Healthcheck_Drain_Undrain(t *testing.T) {
 		DrainDuration: latency,
 		ListenAddr:    listenAddr,
 		Log:           getTestLogger(),
-	})
+	}, ports.NewBuilderHubHandler(nil, getTestLogger()))
 	require.NoError(t, err)
 
 	{ // Check health
@@ -112,7 +113,7 @@ func Test_Handlers_BuilderConfigHub(t *testing.T) {
 		{http.MethodPost, "/api/l1-builder/v1/register_credentials/rbuilder", []byte(`{"var1":"foo"}`)},
 	}
 
-	srv, err := NewHTTPServer(testServerConfig)
+	srv, err := NewHTTPServer(testServerConfig, ports.NewBuilderHubHandler(nil, getTestLogger()))
 	require.NoError(t, err)
 
 	for _, r := range routes {

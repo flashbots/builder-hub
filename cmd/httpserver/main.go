@@ -7,17 +7,22 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/flashbots/builder-hub/adapters/database"
+	"github.com/flashbots/builder-hub/adapters/secrets"
+	"github.com/flashbots/builder-hub/application"
 	"github.com/flashbots/builder-hub/common"
 	"github.com/flashbots/builder-hub/httpserver"
+	"github.com/flashbots/builder-hub/ports"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2" // imports as package "cli"
 )
 
-var flags []cli.Flag = []cli.Flag{
+var flags = []cli.Flag{
 	&cli.StringFlag{
-		Name:  "listen-addr",
-		Value: "127.0.0.1:8080",
-		Usage: "address to serve API",
+		Name:    "listen-addr",
+		Value:   "127.0.0.1:8080",
+		Usage:   "address to serve API",
+		EnvVars: []string{"LISTEN_ADDR"},
 	},
 	&cli.StringFlag{
 		Name:  "metrics-addr",
@@ -25,9 +30,10 @@ var flags []cli.Flag = []cli.Flag{
 		Usage: "address to serve Prometheus metrics",
 	},
 	&cli.BoolFlag{
-		Name:  "log-json",
-		Value: false,
-		Usage: "log in JSON format",
+		Name:    "log-json",
+		Value:   false,
+		Usage:   "log in JSON format",
+		EnvVars: []string{"LOG_JSON"},
 	},
 	&cli.BoolFlag{
 		Name:  "log-debug",
@@ -53,6 +59,18 @@ var flags []cli.Flag = []cli.Flag{
 		Name:  "drain-seconds",
 		Value: 15,
 		Usage: "seconds to wait in drain HTTP request",
+	},
+	&cli.StringFlag{
+		Name:    "postgres-dsn",
+		Value:   "postgres://localhost:5432/postgres?sslmode=disable",
+		Usage:   "Postgres DSN",
+		EnvVars: []string{"POSTGRES_DSN"},
+	},
+	&cli.StringFlag{
+		Name:    "secret-name",
+		Value:   "",
+		Usage:   "AWS Secret name",
+		EnvVars: []string{"AWS_SECRET_NAME"},
 	},
 }
 
@@ -86,6 +104,20 @@ func main() {
 				RequestHeaders: true,
 				Tags:           logTags,
 			})
+			db, err := database.NewDatabaseService(cCtx.String("postgres-dsn"))
+			if err != nil {
+				log.Error("failed to create database", "err", err)
+				return err
+			}
+			defer db.Close()
+
+			sm, err := secrets.NewService(cCtx.String("secret-name"))
+			if err != nil {
+				log.Error("failed to create secrets manager", "err", err)
+				return err
+			}
+			builderHub := application.NewBuilderHub(db, sm)
+			builderHandler := ports.NewBuilderHubHandler(builderHub, log)
 
 			cfg := &httpserver.HTTPServerConfig{
 				ListenAddr:  listenAddr,
@@ -99,15 +131,9 @@ func main() {
 				WriteTimeout:             30 * time.Second,
 			}
 
-			srv, err := httpserver.NewHTTPServer(cfg)
+			srv, err := httpserver.NewHTTPServer(cfg, builderHandler)
 			if err != nil {
 				cfg.Log.Error("failed to create server", "err", err)
-				return err
-			}
-
-			err = srv.LoadMockResponses()
-			if err != nil {
-				cfg.Log.Error("failed to load mock responses", "err", err)
 				return err
 			}
 
