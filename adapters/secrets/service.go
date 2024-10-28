@@ -1,3 +1,4 @@
+// Package secrets contains logic for adapter to aws secrets manager
 package secrets
 
 import (
@@ -60,7 +61,7 @@ func (s *Service) GetSecretValues(builderName string) (map[string]string, error)
 	return MergeSecrets(defaultSecrets, builderSecrets), nil
 }
 
-func MergeSecrets(defaultSecrets map[string]string, secrets map[string]string) map[string]string {
+func MergeSecrets(defaultSecrets, secrets map[string]string) map[string]string {
 	// merge secrets
 	res := make(map[string]string)
 	for k, v := range defaultSecrets {

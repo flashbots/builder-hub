@@ -15,7 +15,7 @@ type BuilderDataAccessor interface {
 	GetActiveMeasurementsByType(ctx context.Context, attestationType string) ([]domain.Measurement, error)
 	GetBuilderByIP(ip net.IP) (*domain.Builder, error)
 	GetActiveConfigForBuilder(ctx context.Context, builderName string) (json.RawMessage, error)
-	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName string, attestationType string) error
+	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error
 }
 
 type SecretAccessor interface {
@@ -39,7 +39,7 @@ func (b *BuilderHub) GetActiveBuilders(ctx context.Context) ([]domain.BuilderWit
 	return b.dataAccessor.GetActiveBuildersWithServiceCredentials(ctx)
 }
 
-func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName string, attestationType string) error {
+func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error {
 	return b.dataAccessor.RegisterCredentialsForBuilder(ctx, builderName, service, tlsCert, ecdsaPubKey, measurementName, attestationType)
 }
 
@@ -59,7 +59,7 @@ func (b *BuilderHub) GetConfigWithSecrets(ctx context.Context, builderName strin
 	return res, nil
 }
 
-func (b *BuilderHub) VerifyIpAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error) {
+func (b *BuilderHub) VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error) {
 	measurements, err := b.dataAccessor.GetActiveMeasurementsByType(ctx, attestationType)
 	if err != nil {
 		return nil, "", fmt.Errorf("failing to fetch corresponding measurement data %s %w", attestationType, err)

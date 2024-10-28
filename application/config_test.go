@@ -184,5 +184,6 @@ func TestMerge(t *testing.T) {
 
 	cfg := ExampleConfig{}
 	err = json.Unmarshal(newC, &cfg)
-	require.Equal(t, cfg.OrderflowProxy.FlashbotsOfSigningKey, "test_value_1")
+	require.NoError(t, err)
+	require.Equal(t, "test_value_1", cfg.OrderflowProxy.FlashbotsOfSigningKey)
 }

@@ -1,14 +1,15 @@
+// Package domain contains domain area types/functions for builder hub
 package domain
 
 import (
-	"fmt"
+	"errors"
 	"net"
 )
 
 var (
-	ErrNotFound           = fmt.Errorf("not found")
-	ErrIncorrectBuilder   = fmt.Errorf("incorrect builder")
-	ErrInvalidMeasurement = fmt.Errorf("no such active measurement found")
+	ErrNotFound           = errors.New("not found")
+	ErrIncorrectBuilder   = errors.New("incorrect builder")
+	ErrInvalidMeasurement = errors.New("no such active measurement found")
 )
 
 type Measurement struct {
@@ -44,7 +45,4 @@ type BuilderServices struct {
 	TLSCert     string
 	ECDSAPubKey []byte
 	Service     string
-}
-
-type BuilderConfig struct {
 }

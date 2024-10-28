@@ -1,3 +1,4 @@
+// Package ports contains entry-point related logic for builder-hub. As of now only way to access builder-hub functionality is via http
 package ports
 
 import (
@@ -14,18 +15,17 @@ const (
 	ForwardedHeader       string = "X-Forwarded-For"
 )
 
-var (
-	ErrInvalidAuthData = errors.New("invalid auth data")
-)
+var ErrInvalidAuthData = errors.New("invalid auth data")
 
 type BuilderWithServiceCreds struct {
-	Ip           string
+	IP           string
+	Name         string
 	ServiceCreds map[string]ServiceCred
 }
 
 type ServiceCred struct {
-	TlsCert     string `json:"tls_cert,omitempty"`
-	EcdsaPubkey string `json:"ecdsa_pubkey,omitempty"`
+	TLSCert     string `json:"tls_cert,omitempty"`
+	ECDSAPubkey string `json:"ecdsa_pubkey,omitempty"`
 }
 
 // MarshalJSON is a custom json marshaller. Unfortunately, there seems to be no way to inline map[string]Service when marshalling
@@ -34,8 +34,9 @@ func (b BuilderWithServiceCreds) MarshalJSON() ([]byte, error) {
 	// Create a map to hold all fields
 	m := make(map[string]interface{})
 
-	// Add the Ip field
-	m["ip"] = b.Ip
+	// Add the IP field
+	m["ip"] = b.IP
+	m["name"] = b.Name
 
 	// Add all services
 	for k, v := range b.ServiceCreds {
@@ -46,15 +47,16 @@ func (b BuilderWithServiceCreds) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-func fromDomainBuilderWithServices(builder *domain.BuilderWithServices) BuilderWithServiceCreds {
+func fromDomainBuilderWithServices(builder domain.BuilderWithServices) BuilderWithServiceCreds {
 	b := BuilderWithServiceCreds{}
 
-	b.Ip = builder.Builder.IPAddress.String()
+	b.IP = builder.Builder.IPAddress.String()
+	b.Name = builder.Builder.Name
 	b.ServiceCreds = make(map[string]ServiceCred)
 	for _, v := range builder.Services {
 		b.ServiceCreds[v.Service] = ServiceCred{
-			TlsCert:     v.TLSCert,
-			EcdsaPubkey: hex.EncodeToString(v.ECDSAPubKey),
+			TLSCert:     v.TLSCert,
+			ECDSAPubkey: hex.EncodeToString(v.ECDSAPubKey),
 		}
 	}
 
@@ -67,7 +69,7 @@ type Measurement struct {
 	Measurement     map[string]domain.SingleMeasurement `json:"measurement"`
 }
 
-func fromDomainMeasurement(measurement *domain.Measurement) Measurement {
+func fromDomainMeasurement(measurement domain.Measurement) Measurement {
 	m := Measurement{
 		Name:            measurement.Name,
 		AttestationType: measurement.AttestationType,

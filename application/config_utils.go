@@ -1,3 +1,4 @@
+// Package application contains application logic for the builder-hub
 package application
 
 import (
@@ -9,7 +10,7 @@ import (
 
 func MergeConfigSecrets(config json.RawMessage, secrets map[string]string) (json.RawMessage, error) {
 	// merge config and secrets
-	var bts = []byte(config)
+	bts := []byte(config)
 	var err error
 	for k, v := range secrets {
 		tV := "\"" + v + "\""
