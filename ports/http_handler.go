@@ -231,7 +231,8 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	ecdsaBytes, err := hex.DecodeString(sc.ECDSAPubkey)
+
+	ecdsaBytes, err := fromHex(sc.ECDSAPubkey)
 	if err != nil {
 		bhs.log.Error("Failed to decode ecdsa public key", "err", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -245,4 +246,13 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func fromHex(s string) ([]byte, error) {
+	s = strings.TrimPrefix(s, "0x")
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }

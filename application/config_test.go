@@ -2,6 +2,7 @@ package application
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -179,7 +180,9 @@ func TestMerge(t *testing.T) {
 `
 	secrets := make(map[string]string)
 	secrets["orderflow_proxy.flashbots_of_signing_key"] = "test_value_1"
+	secrets["smb.smt.[0].url"] = "test_value_2"
 	newC, err := MergeConfigSecrets([]byte(exStr), secrets)
+	fmt.Println(string(newC))
 	require.NoError(t, err)
 
 	cfg := ExampleConfig{}

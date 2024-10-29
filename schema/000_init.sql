@@ -75,11 +75,6 @@ CREATE UNIQUE INDEX idx_unique_active_credential_per_builder_service
     WHERE is_active = true;
 
 
-CREATE TRIGGER trigger_update_service_credential_registrations_updated_at
-    BEFORE UPDATE
-    ON service_credential_registrations
-    FOR EACH ROW
-EXECUTE FUNCTION update_service_credential_registrations_updated_at();
 
 -- Updated builder_configs table
 CREATE TABLE builder_configs
