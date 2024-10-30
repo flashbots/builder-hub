@@ -24,6 +24,8 @@
         "relay_secret_key": "0x00",
         "optimistic_relay_secret_key": "0x00",
         "coinbase_secret_key": "0x00",
+        "top_bid_stream_api_key": "0x00",
+        "always_seal": true,
         "relays": [
             {
                 "name": "flashbots",
@@ -45,6 +47,7 @@
     },
     "prometheus": {
         "__version": "2.54.0",
+        "instance_name": "tdx-builder-xx-yocto",
         "scrape_interval": "10s",
         "static_configs_default_labels": [
             {
@@ -71,13 +74,18 @@
         "rbuilder_metrics": {
             "enabled": true,
             "targets": [
-                "localhost:6069"
+                "localhost:6060"
             ]
         },
         "remote_write": [
             {
                 "name": "tdx-rbuilder-collector",
-                "url": "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write"
+                "url": "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write",
+                "sigv4": {
+                    "access_key": "xxx",
+                    "secret_key": "xxx",
+                    "region": "us-east-2"
+                }
             }
         ]
     },
