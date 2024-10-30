@@ -66,14 +66,14 @@ func fromDomainBuilderWithServices(builder domain.BuilderWithServices) BuilderWi
 type Measurement struct {
 	Name            string                              `json:"measurement_id"`
 	AttestationType string                              `json:"attestation_type"`
-	Measurement     map[string]domain.SingleMeasurement `json:"measurement"`
+	Measurements    map[string]domain.SingleMeasurement `json:"measurements"`
 }
 
 func fromDomainMeasurement(measurement domain.Measurement) Measurement {
 	m := Measurement{
 		Name:            measurement.Name,
 		AttestationType: measurement.AttestationType,
-		Measurement:     measurement.Measurement,
+		Measurements:    measurement.Measurement,
 	}
 	return m
 }
