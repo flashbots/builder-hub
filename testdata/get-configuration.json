@@ -20,7 +20,7 @@
     },
     "rbuilder": {
         "__version": "v0.1.0-26-g18875a4",
-        "extra_data": "Illuminate Dmocratize Dstribute",
+        "extra_data": "Illuminate Dmocrtz Dstrib Prtct",
         "relay_secret_key": "0x00",
         "optimistic_relay_secret_key": "0x00",
         "coinbase_secret_key": "0x00",
