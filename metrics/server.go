@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -32,7 +33,7 @@ func (srv *MetricsServer) Start() error {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	if err := srv.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil

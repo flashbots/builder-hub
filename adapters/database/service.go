@@ -1,3 +1,4 @@
+// Package database provides a database adapter for postgres
 package database
 
 import (
@@ -36,7 +37,6 @@ func (s *Service) Close() error {
 	return s.DB.Close()
 }
 
-// GetMeasurementByTypeAndHash retrieves a measurement by OID and hash
 func (s *Service) GetActiveMeasurementsByType(ctx context.Context, attestationType string) ([]domain.Measurement, error) {
 	var measurements []Measurement
 	err := s.DB.SelectContext(ctx, &measurements, `SELECT * FROM measurements_whitelist WHERE is_active=true AND attestation_type=$1`, attestationType)
@@ -90,13 +90,15 @@ func (s *Service) GetActiveMeasurements(ctx context.Context) ([]domain.Measureme
 
 // RegisterCredentialsForBuilder registers new credentials for a builder, deprecating all previous credentials
 // It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
-func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName string, attestationType string) error {
+func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error {
 	// Start a transaction
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() // Rollback the transaction if it's not committed
+	defer func() {
+		_ = tx.Rollback()
+	}() // Rollback the transaction if it's not committed
 
 	// Deprecate all previous credentials for this builder and service
 	_, err = tx.Exec(`

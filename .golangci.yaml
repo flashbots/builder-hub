@@ -1,3 +1,5 @@
+run:
+  tests: false
 linters:
   enable-all: true
   disable:
@@ -11,7 +13,6 @@ linters:
     - godot
     - godox
     - gomnd
-    - mnd
     - lll
     - nestif
     - nilnil
@@ -27,7 +28,9 @@ linters:
     - wsl
     - exhaustruct
     - depguard
-    - err113
+    - prealloc
+    - whitespace
+    - musttag
 
     #
     # Disabled because of generics:
