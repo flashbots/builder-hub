@@ -4,6 +4,8 @@ package domain
 import (
 	"errors"
 	"net"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var (
@@ -43,6 +45,14 @@ type BuilderWithServices struct {
 
 type BuilderServices struct {
 	TLSCert     string
-	ECDSAPubKey []byte
+	ECDSAPubKey *common.Address
 	Service     string
+}
+
+func Bytes2Address(b []byte) *common.Address {
+	if len(b) == 0 {
+		return nil
+	}
+	addr := common.BytesToAddress(b)
+	return &addr
 }

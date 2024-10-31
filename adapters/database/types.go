@@ -104,7 +104,7 @@ func toDomainBuilderWithCredentials(builder BuilderWithCredentials) (*domain.Bui
 	for _, cred := range builder.Credentials {
 		s.Services = append(s.Services, domain.BuilderServices{
 			TLSCert:     cred.TLSCert.String,
-			ECDSAPubKey: cred.ECDSAPubKey,
+			ECDSAPubKey: domain.Bytes2Address(cred.ECDSAPubKey),
 			Service:     cred.Service,
 		})
 	}

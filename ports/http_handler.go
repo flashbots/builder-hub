@@ -2,7 +2,6 @@ package ports
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -231,14 +230,13 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	ecdsaBytes, err := fromHex(sc.ECDSAPubkey)
-	if err != nil {
-		bhs.log.Error("Failed to decode ecdsa public key", "err", err)
+	if sc.TLSCert == "" && sc.ECDSAPubkey == nil {
+		bhs.log.Error("No credentials provided")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, sc.TLSCert, ecdsaBytes, measurementName, authData.AttestationType)
+
+	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, sc.TLSCert, sc.ECDSAPubkey.Bytes(), measurementName, authData.AttestationType)
 	if err != nil {
 		bhs.log.Error("Failed to register credentials", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -246,13 +244,4 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func fromHex(s string) ([]byte, error) {
-	s = strings.TrimPrefix(s, "0x")
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
 }
