@@ -10,7 +10,7 @@
         "github_token": "string"
     },
     "orderflow_proxy": {
-        "flashbots_of_signing_key": "0x00",
+        "flashbots_orderflow_signing_address": "0x00",
         "builder_public_ip": "1.2.3.4",
         "tls_hosts": [
             "1.2.3.4",
