@@ -11,13 +11,9 @@
     },
     "orderflow_proxy": {
         "flashbots_orderflow_signing_address": "0x00",
-        "builder_public_ip": "1.2.3.4",
-        "tls_hosts": [
-            "1.2.3.4",
-            "fundomain.builderx.io",
-            "172.27.14.1",
-            "2001:db8::123.123.123.123"
-        ]
+        "builder_endpoint": "http://127.0.0.1:8645",
+        "local_listen_addr": "0.0.0.0:443",
+        "public_listen_addr": "0.0.0.0:5544"
     },
     "rbuilder": {
         "__version": "v0.1.0-26-g18875a4",
