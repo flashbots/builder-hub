@@ -2,9 +2,10 @@
 
 [![Test status](https://github.com/flashbots/builder-hub/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/flashbots/builder-hub/actions?query=workflow%3A%22Checks%22)
 
-Contains code for builder hub service that acts as a data source for builders registration and configuration.
+Contains code for the builder hub service that acts as a data source for builders registration and configuration.
 
-Docs: https://buildernet.github.io/docs/
+Docs here: https://buildernet.github.io/docs/
+
 ---
 
 ## Getting started
