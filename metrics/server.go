@@ -47,6 +47,7 @@ func (srv *MetricsServer) getRouter() http.Handler {
 	}
 
 	mux.Use(middleware.Recoverer)
+
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		metrics.WritePrometheus(w, true)
 	})

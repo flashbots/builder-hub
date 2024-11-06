@@ -1,11 +1,10 @@
-# BuilderConfigHub
+# BuilderHub
 
 [![Test status](https://github.com/flashbots/builder-hub/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/flashbots/builder-hub/actions?query=workflow%3A%22Checks%22)
 
-Endpoint for TDX builders to talk to.
+Contains code for builder hub service that acts as a data source for builders registration and configuration.
 
-https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87
-
+Docs: https://buildernet.github.io/docs/
 ---
 
 ## Getting started
@@ -48,6 +47,8 @@ make fmt
 ```bash
 # start the database
 docker run -d --name postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres postgres
+
+for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
 
 # run the tests
 RUN_DB_TESTS=1 make test
