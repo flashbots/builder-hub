@@ -2,22 +2,14 @@
 package metrics
 
 import (
+	"fmt"
+
 	"github.com/VictoriaMetrics/metrics"
 )
 
-var testMetric = metrics.NewCounter("test1")
+const requestDurationLabel = `http_server_request_duration_milliseconds{route="%s"}`
 
-// sbundleProcessDurationSummary        = metrics.NewSummary("sbundle_process_duration_milliseconds")
-
-// const (
-// 	sbundleRPCCallDurationLabel     = `sbundle_rpc_call_duration_milliseconds{method="%s"}`
-// 	sbundleRPCCallErrorCounterLabel = `sbundle_rpc_call_error_total{method="%s"}`
-
-// 	sbundleSentToBuilderLabel                = `bundle_sent_to_builder_total{builder="%s"}`
-// 	sbundleSentToBuilderFailureLabel         = `bundle_sent_to_builder_failure_total{builder="%s"}`
-// 	sbundleSentToBuilderDurationSummaryLabel = `bundle_sent_to_builder_duration_milliseconds{builder="%s"}`
-// )
-
-func IncSbundlesReceived() {
-	testMetric.Inc()
+func recordRequestDuration(route string, duration int64) {
+	l := fmt.Sprintf(requestDurationLabel, route)
+	metrics.GetOrCreateSummary(l).Update(float64(duration))
 }

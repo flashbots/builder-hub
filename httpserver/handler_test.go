@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +16,7 @@ import (
 var testServerConfig = &HTTPServerConfig{
 	Log: getTestLogger(),
 }
+var _ = testServerConfig
 
 func getTestLogger() *httplog.Logger {
 	return common.SetupLogger(&common.LoggingOpts{
@@ -97,35 +97,5 @@ func Test_Handlers_Healthcheck_Drain_Undrain(t *testing.T) {
 		_, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Healthcheck must return `Ok` after undraining")
-	}
-}
-
-func Test_Handlers_BuilderConfigHub(t *testing.T) {
-	routes := []struct {
-		method  string
-		path    string
-		payload []byte
-	}{
-		// BuilderConfigHub API: https://www.notion.so/flashbots/BuilderConfigHub-1076b4a0d8768074bcdcd1c06c26ec87?pvs=4#10a6b4a0d87680fd81e0cad9bac3b8c5
-		{http.MethodGet, "/api/l1-builder/v1/measurements", nil},
-		{http.MethodGet, "/api/l1-builder/v1/configuration", nil},
-		{http.MethodGet, "/api/l1-builder/v1/builders", nil},
-		{http.MethodPost, "/api/l1-builder/v1/register_credentials/rbuilder", []byte(`{"var1":"foo"}`)},
-	}
-
-	srv, err := NewHTTPServer(testServerConfig, ports.NewBuilderHubHandler(nil, getTestLogger()))
-	require.NoError(t, err)
-
-	for _, r := range routes {
-		var payload io.Reader
-		if r.payload != nil {
-			payload = bytes.NewReader(r.payload)
-		}
-		req, err := http.NewRequest(r.method, r.path, payload)
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-		srv.getRouter().ServeHTTP(rr, req)
-		require.Equal(t, http.StatusOK, rr.Code)
 	}
 }

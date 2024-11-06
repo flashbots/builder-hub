@@ -10,6 +10,21 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -20,8 +35,11 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
+      - name: Run migrations
+        run: for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
+
       - name: Run unit tests and generate the coverage report
-        run: make test-race
+        run: RUN_DB_TESTS=1 make test-race
 
   lint:
     name: Lint
@@ -30,7 +48,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: ^1.21
+          go-version: ^1.22
         id: go
 
       - name: Check out code into the Go module directory
@@ -40,7 +58,7 @@ jobs:
         run: go install mvdan.cc/gofumpt@v0.4.0
 
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.4.2
+        run: go install honnef.co/go/tools/cmd/staticcheck@2024.1.1
 
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
