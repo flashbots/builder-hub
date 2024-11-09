@@ -117,6 +117,8 @@
         "__version": "v1.9.7",
         "input_tags": "tag-1 tag-2",
         "output_cw_log_group_name": "multioperator-builder",
-        "output_cw_log_stream_prefix": "builder-01-"
+        "output_cw_log_stream_name": "builder-01",
+        "aws_access_key_id": "xxx",
+        "aws_secret_access_key": "xxx"
     }
 }
