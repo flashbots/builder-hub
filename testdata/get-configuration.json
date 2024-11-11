@@ -79,6 +79,12 @@
                 "localhost:6060"
             ]
         },
+        "orderflow_proxy_metrics": {
+            "enabled": true,
+            "targets": [
+                "localhost:8090"
+            ]
+        },
         "remote_write": [
             {
                 "name": "tdx-rbuilder-collector",
