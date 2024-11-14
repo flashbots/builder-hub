@@ -250,15 +250,15 @@ func (s *Service) AddMeasurement(ctx context.Context, measurement domain.Measure
 }
 
 func (s *Service) AddBuilder(ctx context.Context, builder domain.Builder) error {
-	bIp := pgtype.Inet{}
-	err := bIp.Set(builder.IPAddress)
+	bIP := pgtype.Inet{}
+	err := bIP.Set(builder.IPAddress)
 	if err != nil {
 		return err
 	}
 	_, err = s.DB.ExecContext(ctx, `
 		INSERT INTO builders (name, ip_address, is_active)
 		VALUES ($1, $2, $3)
-	`, builder.Name, bIp, builder.IsActive)
+	`, builder.Name, bIP, builder.IsActive)
 	return err
 }
 
