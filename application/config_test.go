@@ -190,3 +190,24 @@ func TestMerge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test_value_1", cfg.OrderflowProxy.FlashbotsOfSigningKey)
 }
+
+func TestFlatten(t *testing.T) {
+	jsonBytes := []byte(`{
+		"user": {
+			"name": "Alice",
+			"details": {
+				"age": 30,
+				"address": {
+					"city": "Wonderland"
+				}
+			},
+			"tags": ["admin", "user"]
+},
+			"smb":{"smt":[{"url":"test_value_2"}]}
+
+	}`)
+	flatMap, err := FlattenJSONFromBytes(jsonBytes)
+	require.NoError(t, err)
+	require.Equal(t, "Alice", flatMap["user.name"])
+	require.Equal(t, "test_value_2", flatMap["smb.smt.[0].url"])
+}

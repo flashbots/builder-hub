@@ -35,7 +35,7 @@ EXECUTE FUNCTION update_builders_updated_at();
 CREATE TABLE measurements_whitelist
 (
     id               SERIAL PRIMARY KEY,                -- new serial primary key
-    name             TEXT                     NOT NULL, -- hash of the measurement
+    name             TEXT                     NOT NULL, -- in code is referenced as measurement_id
     attestation_type TEXT                     NOT NULL, -- attestation type of the measurement
     measurement      JSONB                    NOT NULL,
     is_active        BOOLEAN                  NOT NULL DEFAULT true,

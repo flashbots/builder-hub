@@ -61,6 +61,42 @@ func (s *Service) GetSecretValues(builderName string) (map[string]string, error)
 	return MergeSecrets(defaultSecrets, builderSecrets), nil
 }
 
+func (s *Service) SetSecretValues(builderName string, values map[string]any) error {
+	input := &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(s.secretName),
+	}
+
+	result, err := s.sm.GetSecretValue(input)
+	if err != nil {
+		return err
+	}
+	secretData := make(map[string]string)
+	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
+	if err != nil {
+		return err
+	}
+
+	marshalValues, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+	secretData[builderName] = string(marshalValues)
+	newSecretString, err := json.Marshal(secretData)
+	if err != nil {
+		return err
+	}
+
+	sv := &secretsmanager.PutSecretValueInput{
+		SecretId:     aws.String(s.secretName),
+		SecretString: aws.String(string(newSecretString)),
+	}
+	_, err = s.sm.PutSecretValue(sv)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func MergeSecrets(defaultSecrets, secrets map[string]string) map[string]string {
 	// merge secrets
 	res := make(map[string]string)

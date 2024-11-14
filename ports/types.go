@@ -4,6 +4,7 @@ package ports
 import (
 	"encoding/json"
 	"errors"
+	"net"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/flashbots/builder-hub/domain"
@@ -15,7 +16,10 @@ const (
 	ForwardedHeader       string = "X-Forwarded-For"
 )
 
-var ErrInvalidAuthData = errors.New("invalid auth data")
+var (
+	ErrInvalidAuthData  = errors.New("invalid auth data")
+	ErrInvalidIPAddress = errors.New("invalid ip address")
+)
 
 type BuilderWithServiceCreds struct {
 	IP           string
@@ -76,4 +80,27 @@ func fromDomainMeasurement(measurement domain.Measurement) Measurement {
 		Measurements:    measurement.Measurement,
 	}
 	return m
+}
+
+func toDomainMeasurement(measurement Measurement) domain.Measurement {
+	m := domain.NewMeasurement(measurement.Name, measurement.AttestationType, measurement.Measurements)
+	return *m
+}
+
+type Builder struct {
+	Name      string `json:"name"`
+	IPAddress string `json:"ip_address"`
+}
+
+func toDomainBuilder(builder Builder, enabled bool) (domain.Builder, error) {
+	ip := net.ParseIP(builder.IPAddress)
+	if ip == nil {
+		return domain.Builder{}, ErrInvalidIPAddress
+	}
+
+	return domain.Builder{
+		Name:      builder.Name,
+		IPAddress: ip,
+		IsActive:  enabled,
+	}, nil
 }
