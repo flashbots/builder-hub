@@ -23,7 +23,7 @@ type AdminBuilderService interface {
 }
 
 type AdminSecretService interface {
-	SetSecretValues(builderName string, values map[string]any) error
+	SetSecretValues(builderName string, values map[string]string) error
 	GetSecretValues(builderName string) (map[string]string, error)
 }
 
@@ -150,6 +150,17 @@ func (s *AdminHandler) ChangeActiveStatusForBuilder(w http.ResponseWriter, r *ht
 	if err != nil {
 		s.log.Error("failed to decode request body", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	_, err = s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
+	if errors.Is(err, domain.ErrNotFound) {
+		s.log.Warn("no active config for builder found", "error", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		s.log.Error("failed to fetch active config for builder", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	err = s.builderService.ChangeActiveStatusForBuilder(r.Context(), builderName, activationRequest.Enabled)

@@ -59,19 +59,19 @@ func NewHTTPServer(cfg *HTTPServerConfig, appHandler *ports.BuilderHubHandler, a
 
 	srv.srv = &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      srv.getRouter(),
+		Handler:      srv.GetRouter(),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}
 	srv.internalSrv = &http.Server{
 		Addr:         cfg.InternalAddr,
-		Handler:      srv.getInternalRouter(),
+		Handler:      srv.GetInternalRouter(),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}
 	srv.adminSrv = &http.Server{
 		Addr:         cfg.AdminAddr,
-		Handler:      srv.getAdminRouter(),
+		Handler:      srv.GetAdminRouter(),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}
@@ -79,7 +79,7 @@ func NewHTTPServer(cfg *HTTPServerConfig, appHandler *ports.BuilderHubHandler, a
 	return srv, nil
 }
 
-func (srv *Server) getRouter() http.Handler {
+func (srv *Server) GetRouter() http.Handler {
 	mux := chi.NewRouter()
 
 	mux.Use(httplog.RequestLogger(srv.log))
@@ -105,7 +105,7 @@ func (srv *Server) getRouter() http.Handler {
 	return mux
 }
 
-func (srv *Server) getAdminRouter() http.Handler {
+func (srv *Server) GetAdminRouter() http.Handler {
 	mux := chi.NewRouter()
 
 	mux.Use(httplog.RequestLogger(srv.log))
@@ -124,7 +124,7 @@ func (srv *Server) getAdminRouter() http.Handler {
 	return mux
 }
 
-func (srv *Server) getInternalRouter() http.Handler {
+func (srv *Server) GetInternalRouter() http.Handler {
 	mux := chi.NewRouter()
 
 	mux.Use(httplog.RequestLogger(srv.log))

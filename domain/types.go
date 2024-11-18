@@ -14,6 +14,8 @@ var (
 	ErrInvalidMeasurement = errors.New("no such active measurement found")
 )
 
+const EventGetConfig = "GetConfig"
+
 type Measurement struct {
 	Name            string
 	AttestationType string

@@ -196,7 +196,7 @@ func TestFlatten(t *testing.T) {
 		"user": {
 			"name": "Alice",
 			"details": {
-				"age": 30,
+				"age": "30",
 				"address": {
 					"city": "Wonderland"
 				}

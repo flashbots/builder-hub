@@ -51,6 +51,48 @@ func (b BuilderWithServiceCreds) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+func (b *BuilderWithServiceCreds) UnmarshalJSON(data []byte) error {
+	// Define a temporary struct to unmarshal known fields
+	type Alias struct {
+		IP   string `json:"ip"`
+		Name string `json:"name"`
+	}
+
+	// Unmarshal known fields first
+	var alias Alias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+
+	// Copy known fields to the original struct
+	b.IP = alias.IP
+	b.Name = alias.Name
+
+	// Unmarshal the remaining fields into a map
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMap); err != nil {
+		return err
+	}
+
+	// Remove known fields from the map
+	delete(rawMap, "ip")
+	delete(rawMap, "name")
+
+	// Initialize the ServiceCreds map
+	b.ServiceCreds = make(map[string]ServiceCred)
+
+	// Unmarshal each remaining field into the ServiceCreds map
+	for key, rawValue := range rawMap {
+		var serviceCred ServiceCred
+		if err := json.Unmarshal(rawValue, &serviceCred); err != nil {
+			return err
+		}
+		b.ServiceCreds[key] = serviceCred
+	}
+
+	return nil
+}
+
 func fromDomainBuilderWithServices(builder domain.BuilderWithServices) BuilderWithServiceCreds {
 	b := BuilderWithServiceCreds{}
 

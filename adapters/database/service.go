@@ -221,15 +221,15 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) (
 
 // LogEvent creates a new log entry in the event_log table.
 // It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
-func (s *Service) LogEvent(ctx context.Context, eventName, builderName, name, attestationType string) error {
+func (s *Service) LogEvent(ctx context.Context, eventName, builderName, name string) error {
 	// Insert new event log entry with a subquery to fetch the measurement_id
 	_, err := s.DB.ExecContext(ctx, `
         INSERT INTO event_log 
         (event_name, builder_name, measurement_id)
         VALUES ($1, $2, 
-            (SELECT id FROM measurements_whitelist WHERE name = $3 AND attestation_type = $4)
+            (SELECT id FROM measurements_whitelist WHERE name = $3)
         )
-    `, eventName, builderName, name, attestationType)
+    `, eventName, builderName, name)
 	if err != nil {
 		return fmt.Errorf("failed to insert event log for builder %s: %w", builderName, err)
 	}

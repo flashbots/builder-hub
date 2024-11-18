@@ -21,6 +21,7 @@ type BuilderHubService interface {
 	VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error)
 	GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error)
 	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error
+	LogEvent(ctx context.Context, eventName, builderName, name string) error
 }
 type BuilderHubHandler struct {
 	builderHubService BuilderHubService
@@ -171,7 +172,7 @@ func (bhs *BuilderHubHandler) GetConfigSecrets(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	builder, _, err := bhs.builderHubService.VerifyIPAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
+	builder, measurementName, err := bhs.builderHubService.VerifyIPAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
 	if errors.Is(err, domain.ErrNotFound) {
 		bhs.log.Warn("invalid auth data", "error", err)
 		w.WriteHeader(http.StatusForbidden)
@@ -183,6 +184,14 @@ func (bhs *BuilderHubHandler) GetConfigSecrets(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// add event log
+	err = bhs.builderHubService.LogEvent(r.Context(), domain.EventGetConfig, builder.Name, measurementName)
+	if err != nil {
+		bhs.log.Error("failed to get log event", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	_, err = w.Write(bts)
 	if err != nil {
 		bhs.log.Error("failed to write response", "error", err)

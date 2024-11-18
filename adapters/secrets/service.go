@@ -42,7 +42,7 @@ func (s *Service) GetSecretValues(builderName string) (map[string]string, error)
 	if err != nil {
 		return nil, err
 	}
-	defaultStr := secretData["default"]
+	defaultStr := secretData["default"] // TODO: figured out that merging here is suboptimal and should be done in the application layer
 	defaultSecrets := make(map[string]string)
 	err = json.Unmarshal([]byte(defaultStr), &defaultSecrets)
 	if err != nil {
@@ -61,7 +61,7 @@ func (s *Service) GetSecretValues(builderName string) (map[string]string, error)
 	return MergeSecrets(defaultSecrets, builderSecrets), nil
 }
 
-func (s *Service) SetSecretValues(builderName string, values map[string]any) error {
+func (s *Service) SetSecretValues(builderName string, values map[string]string) error {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(s.secretName),
 	}
