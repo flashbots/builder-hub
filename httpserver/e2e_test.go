@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -35,9 +36,9 @@ func (mss *MockSecretService) SetSecretValues(builderName string, values map[str
 }
 
 func TestCreateMultipleBuilders(t *testing.T) {
-	//if os.Getenv("RUN_DB_TESTS") != "1" {
-	//	t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
-	//}
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
 	s, _, _ := createServer(t)
 
 	createBuilder(t, s, "test-builder-1", "127.0.0.1")
@@ -46,9 +47,9 @@ func TestCreateMultipleBuilders(t *testing.T) {
 }
 
 func TestCreateMultipleMeasurements(t *testing.T) {
-	//if os.Getenv("RUN_DB_TESTS") != "1" {
-	//	t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
-	//}
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
 	s, _, _ := createServer(t)
 
 	createMeasurement(t, s, ports.Measurement{
@@ -78,7 +79,12 @@ func TestCreateMultipleMeasurements(t *testing.T) {
 }
 
 func TestAuthInteractionFlow(t *testing.T) {
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
+
 	s, _, _ := createServer(t)
+
 	builderName := "test_builder_1"
 	ip := "127.0.0.1"
 	createBuilder(t, s, builderName, ip)
@@ -142,7 +148,7 @@ func TestAuthInteractionFlow(t *testing.T) {
 }
 
 // createBuilder emulates admin flow to provision a builder
-func createBuilder(t *testing.T, s *Server, builderName string, ip string) {
+func createBuilder(t *testing.T, s *Server, builderName, ip string) {
 	builder := ports.Builder{
 		Name:      builderName,
 		IPAddress: ip,
@@ -252,12 +258,12 @@ func createServer(t *testing.T) (*Server, *database.Service, *MockSecretService)
 	return s, dbService, mss
 }
 
-func execRequestNoAuth(t *testing.T, router http.Handler, method, url string, request any, response any) (statusCode int, responsePayload []byte) {
+func execRequestNoAuth(t *testing.T, router http.Handler, method, url string, request, response any) (statusCode int, responsePayload []byte) {
 	t.Helper()
 	return execRequestAuth(t, router, method, url, request, response, "", nil, "")
 }
 
-func execRequestAuth(t *testing.T, router http.Handler, method, url string, request any, response any, attestationType string, measurement map[string]string, ip string) (statusCode int, responsePayload []byte) {
+func execRequestAuth(t *testing.T, router http.Handler, method, url string, request, response any, attestationType string, measurement map[string]string, ip string) (statusCode int, responsePayload []byte) {
 	t.Helper()
 	rBody, err := json.Marshal(request)
 	require.NoError(t, err)
