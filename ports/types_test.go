@@ -34,3 +34,18 @@ func TestServiceCredsNil(t *testing.T) {
 		t.Error("Failed to unmarshal ECDSA pubkey")
 	}
 }
+
+func TestUnmarshalBuilders(t *testing.T) {
+	val := []byte(`[{"ip":"127.0.0.1","name":"test_builder_1","rbuilder":{"tls_cert":"test-cert-no-validation","ecdsa_pubkey_address":"0x1234567890123456789012345678901234567890"}}]`)
+	var builders []BuilderWithServiceCreds
+	err := json.Unmarshal(val, &builders)
+	if err != nil {
+		t.Error("Failed to unmarshal builders", err)
+	}
+	if len(builders) != 1 {
+		t.Error("Failed to unmarshal builders")
+	}
+	if builders[0].ServiceCreds["rbuilder"].TLSCert != "test-cert-no-validation" {
+		t.Error("Failed to unmarshal TLS cert")
+	}
+}

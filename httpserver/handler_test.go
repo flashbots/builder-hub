@@ -13,6 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	latency      = 200 * time.Millisecond
+	listenAddr   = ":8080"
+	internalAddr = ":8081"
+	adminAddr    = ":8082"
+)
+
 var testServerConfig = &HTTPServerConfig{
 	Log: getTestLogger(),
 }
@@ -27,17 +34,14 @@ func getTestLogger() *httplog.Logger {
 }
 
 func Test_Handlers_Healthcheck_Drain_Undrain(t *testing.T) {
-	const (
-		latency    = 200 * time.Millisecond
-		listenAddr = ":8080"
-	)
-
 	//nolint: exhaustruct
 	s, err := NewHTTPServer(&HTTPServerConfig{
 		DrainDuration: latency,
 		ListenAddr:    listenAddr,
+		InternalAddr:  internalAddr,
+		AdminAddr:     adminAddr,
 		Log:           getTestLogger(),
-	}, ports.NewBuilderHubHandler(nil, getTestLogger()))
+	}, ports.NewBuilderHubHandler(nil, getTestLogger()), ports.NewAdminHandler(nil, nil, getTestLogger()))
 	require.NoError(t, err)
 
 	{ // Check health

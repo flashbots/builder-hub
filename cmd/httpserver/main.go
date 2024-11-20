@@ -25,6 +25,18 @@ var flags = []cli.Flag{
 		EnvVars: []string{"LISTEN_ADDR"},
 	},
 	&cli.StringFlag{
+		Name:    "admin-addr",
+		Value:   "127.0.0.1:8081",
+		Usage:   "address to serve admin API",
+		EnvVars: []string{"ADMIN_ADDR"},
+	},
+	&cli.StringFlag{
+		Name:    "internal-addr",
+		Value:   "127.0.0.1:8082",
+		Usage:   "address to serve internal API",
+		EnvVars: []string{"INTERNAL_ADDR"},
+	},
+	&cli.StringFlag{
 		Name:  "metrics-addr",
 		Value: "127.0.0.1:8090",
 		Usage: "address to serve Prometheus metrics",
@@ -70,7 +82,7 @@ var flags = []cli.Flag{
 		Name:    "secret-name",
 		Value:   "",
 		Usage:   "AWS Secret name",
-		EnvVars: []string{"AWS_SECRET_NAME"},
+		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME"},
 	},
 }
 
@@ -81,6 +93,8 @@ func main() {
 		Flags: flags,
 		Action: func(cCtx *cli.Context) error {
 			listenAddr := cCtx.String("listen-addr")
+			adminAddr := cCtx.String("admin-addr")
+			internalAddr := cCtx.String("internal-addr")
 			metricsAddr := cCtx.String("metrics-addr")
 			logJSON := cCtx.Bool("log-json")
 			logDebug := cCtx.Bool("log-debug")
@@ -119,11 +133,14 @@ func main() {
 			builderHub := application.NewBuilderHub(db, sm)
 			builderHandler := ports.NewBuilderHubHandler(builderHub, log)
 
+			adminHandler := ports.NewAdminHandler(db, sm, log)
 			cfg := &httpserver.HTTPServerConfig{
-				ListenAddr:  listenAddr,
-				MetricsAddr: metricsAddr,
-				Log:         log,
-				EnablePprof: enablePprof,
+				ListenAddr:   listenAddr,
+				MetricsAddr:  metricsAddr,
+				AdminAddr:    adminAddr,
+				InternalAddr: internalAddr,
+				Log:          log,
+				EnablePprof:  enablePprof,
 
 				DrainDuration:            drainDuration,
 				GracefulShutdownDuration: 30 * time.Second,
@@ -131,7 +148,7 @@ func main() {
 				WriteTimeout:             30 * time.Second,
 			}
 
-			srv, err := httpserver.NewHTTPServer(cfg, builderHandler)
+			srv, err := httpserver.NewHTTPServer(cfg, builderHandler, adminHandler)
 			if err != nil {
 				cfg.Log.Error("failed to create server", "err", err)
 				return err

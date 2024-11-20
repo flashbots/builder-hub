@@ -16,10 +16,12 @@ import (
 )
 
 type HTTPServerConfig struct {
-	ListenAddr  string
-	MetricsAddr string
-	EnablePprof bool
-	Log         *httplog.Logger
+	ListenAddr   string
+	MetricsAddr  string
+	AdminAddr    string
+	InternalAddr string
+	EnablePprof  bool
+	Log          *httplog.Logger
 
 	DrainDuration            time.Duration
 	GracefulShutdownDuration time.Duration
@@ -28,32 +30,48 @@ type HTTPServerConfig struct {
 }
 
 type Server struct {
-	cfg        *HTTPServerConfig
-	isReady    atomic.Bool
-	log        *httplog.Logger
-	appHandler *ports.BuilderHubHandler
+	cfg          *HTTPServerConfig
+	isReady      atomic.Bool
+	log          *httplog.Logger
+	appHandler   *ports.BuilderHubHandler
+	adminHandler *ports.AdminHandler
 
-	srv        *http.Server
-	metricsSrv *metrics.MetricsServer
+	srv         *http.Server
+	adminSrv    *http.Server
+	internalSrv *http.Server
+	metricsSrv  *metrics.MetricsServer
 
 	mockGetConfigResponse       string
 	mockGetBuildersResponse     string
 	mockGetMeasurementsResponse string
 }
 
-func NewHTTPServer(cfg *HTTPServerConfig, appHandler *ports.BuilderHubHandler) (srv *Server, err error) {
+func NewHTTPServer(cfg *HTTPServerConfig, appHandler *ports.BuilderHubHandler, adminHandler *ports.AdminHandler) (srv *Server, err error) {
 	srv = &Server{
-		cfg:        cfg,
-		log:        cfg.Log,
-		appHandler: appHandler,
-		srv:        nil,
-		metricsSrv: metrics.NewMetricsServer(cfg.MetricsAddr, nil),
+		cfg:          cfg,
+		log:          cfg.Log,
+		appHandler:   appHandler,
+		adminHandler: adminHandler,
+		srv:          nil,
+		metricsSrv:   metrics.NewMetricsServer(cfg.MetricsAddr, nil),
 	}
 	srv.isReady.Swap(true)
 
 	srv.srv = &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      srv.getRouter(),
+		Handler:      srv.GetRouter(),
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	}
+	srv.internalSrv = &http.Server{
+		Addr:         cfg.InternalAddr,
+		Handler:      srv.GetInternalRouter(),
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	}
+	srv.adminSrv = &http.Server{
+		Addr:         cfg.AdminAddr,
+		Handler:      srv.GetAdminRouter(),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}
@@ -61,7 +79,7 @@ func NewHTTPServer(cfg *HTTPServerConfig, appHandler *ports.BuilderHubHandler) (
 	return srv, nil
 }
 
-func (srv *Server) getRouter() http.Handler {
+func (srv *Server) GetRouter() http.Handler {
 	mux := chi.NewRouter()
 
 	mux.Use(httplog.RequestLogger(srv.log))
@@ -74,9 +92,6 @@ func (srv *Server) getRouter() http.Handler {
 	mux.Get("/drain", srv.handleDrain)
 	mux.Get("/undrain", srv.handleUndrain)
 
-	// Dev
-	mux.Get("/test-panic", srv.handleTestPanic)
-
 	mux.Get("/api/l1-builder/v1/measurements", srv.appHandler.GetAllowedMeasurements)
 	mux.Get("/api/l1-builder/v1/configuration", srv.appHandler.GetConfigSecrets)
 	mux.Get("/api/l1-builder/v1/builders", srv.appHandler.GetActiveBuilders)
@@ -86,6 +101,38 @@ func (srv *Server) getRouter() http.Handler {
 		srv.log.Info("pprof API enabled")
 		mux.Mount("/debug", middleware.Profiler())
 	}
+
+	return mux
+}
+
+func (srv *Server) GetAdminRouter() http.Handler {
+	mux := chi.NewRouter()
+
+	mux.Use(httplog.RequestLogger(srv.log))
+	mux.Use(middleware.Recoverer)
+	mux.Use(metrics.Middleware)
+
+	mux.Get("/api/admin/v1/builders/configuration/{builderName}/active", srv.adminHandler.GetActiveConfigForBuilder)
+	mux.Get("/api/admin/v1/builders/configuration/{builderName}/full", srv.adminHandler.GetFullConfigForBuilder)
+	mux.Post("/api/admin/v1/measurements", srv.adminHandler.AddMeasurement)
+	mux.Post("/api/admin/v1/builders", srv.adminHandler.AddBuilder)
+	mux.Post("/api/admin/v1/builders/activation/{builderName}", srv.adminHandler.ChangeActiveStatusForBuilder)
+	mux.Post("/api/admin/v1/measurements/activation/{measurementName}", srv.adminHandler.ChangeActiveStatusForMeasurement)
+	mux.Post("/api/admin/v1/builders/configuration/{builderName}", srv.adminHandler.AddBuilderConfig)
+	mux.Post("/api/admin/v1/builders/secrets/{builderName}", srv.adminHandler.SetSecrets)
+
+	return mux
+}
+
+func (srv *Server) GetInternalRouter() http.Handler {
+	mux := chi.NewRouter()
+
+	mux.Use(httplog.RequestLogger(srv.log))
+	mux.Use(middleware.Recoverer)
+	mux.Use(metrics.Middleware)
+
+	mux.Get("/api/l1-builder/v1/measurements", srv.appHandler.GetAllowedMeasurements)
+	mux.Get("/api/internal/l1-builder/v1/builders", srv.appHandler.GetActiveBuildersNoAuth)
 
 	return mux
 }
@@ -131,6 +178,18 @@ func (srv *Server) RunInBackground() {
 			srv.log.Error("HTTP server failed", "err", err)
 		}
 	}()
+	go func() {
+		srv.log.Info("Starting internal HTTP server", "listenAddress", srv.cfg.InternalAddr)
+		if err := srv.internalSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			srv.log.Error("Internal HTTP server failed", "err", err)
+		}
+	}()
+	go func() {
+		srv.log.Info("Starting admin HTTP server", "listenAddress", srv.cfg.AdminAddr)
+		if err := srv.adminSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			srv.log.Error("Admin HTTP server failed", "err", err)
+		}
+	}()
 }
 
 func (srv *Server) Shutdown() {
@@ -138,6 +197,18 @@ func (srv *Server) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), srv.cfg.GracefulShutdownDuration)
 	defer cancel()
 	if err := srv.srv.Shutdown(ctx); err != nil {
+		srv.log.Error("Graceful HTTP server shutdown failed", "err", err)
+	} else {
+		srv.log.Info("HTTP server gracefully stopped")
+	}
+
+	if err := srv.internalSrv.Shutdown(ctx); err != nil {
+		srv.log.Error("Graceful HTTP server shutdown failed", "err", err)
+	} else {
+		srv.log.Info("HTTP server gracefully stopped")
+	}
+
+	if err := srv.adminSrv.Shutdown(ctx); err != nil {
 		srv.log.Error("Graceful HTTP server shutdown failed", "err", err)
 	} else {
 		srv.log.Info("HTTP server gracefully stopped")

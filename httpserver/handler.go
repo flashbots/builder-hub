@@ -34,8 +34,3 @@ func (srv *Server) handleUndrain(w http.ResponseWriter, r *http.Request) {
 	// l := logutils.ZapFromRequest(r)
 	srv.log.Info("Server marked as ready")
 }
-
-func (srv *Server) handleTestPanic(w http.ResponseWriter, r *http.Request) {
-	panic("foo")
-	// w.WriteHeader(http.StatusOK)
-}

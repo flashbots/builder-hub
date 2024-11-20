@@ -142,6 +142,9 @@ func (s *Service) GetActiveConfigForBuilder(ctx context.Context, builderName str
 		SELECT * FROM builder_configs
 		WHERE builder_name = $1 AND is_active = true
 	`, builderName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
 	return config.Config, err
 }
 
@@ -218,17 +221,98 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) (
 
 // LogEvent creates a new log entry in the event_log table.
 // It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
-func (s *Service) LogEvent(ctx context.Context, eventName, builderName, name, attestationType string) error {
+func (s *Service) LogEvent(ctx context.Context, eventName, builderName, name string) error {
 	// Insert new event log entry with a subquery to fetch the measurement_id
 	_, err := s.DB.ExecContext(ctx, `
         INSERT INTO event_log 
         (event_name, builder_name, measurement_id)
         VALUES ($1, $2, 
-            (SELECT id FROM measurements_whitelist WHERE name = $3 AND attestation_type = $4)
+            (SELECT id FROM measurements_whitelist WHERE name = $3)
         )
-    `, eventName, builderName, name, attestationType)
+    `, eventName, builderName, name)
 	if err != nil {
 		return fmt.Errorf("failed to insert event log for builder %s: %w", builderName, err)
+	}
+
+	return nil
+}
+
+func (s *Service) AddMeasurement(ctx context.Context, measurement domain.Measurement, enabled bool) error {
+	bts, err := json.Marshal(measurement.Measurement)
+	if err != nil {
+		return err
+	}
+	_, err = s.DB.ExecContext(ctx, `
+		INSERT INTO measurements_whitelist (name, attestation_type, measurement, is_active)
+		VALUES ($1, $2, $3, $4)
+	`, measurement.Name, measurement.AttestationType, bts, enabled)
+	return err
+}
+
+func (s *Service) AddBuilder(ctx context.Context, builder domain.Builder) error {
+	bIP := pgtype.Inet{}
+	err := bIP.Set(builder.IPAddress)
+	if err != nil {
+		return err
+	}
+	_, err = s.DB.ExecContext(ctx, `
+		INSERT INTO builders (name, ip_address, is_active)
+		VALUES ($1, $2, $3)
+	`, builder.Name, bIP, builder.IsActive)
+	return err
+}
+
+func (s *Service) ChangeActiveStatusForBuilder(ctx context.Context, builderName string, isActive bool) error {
+	_, err := s.DB.ExecContext(ctx, `
+		UPDATE builders
+		SET is_active = $1
+		WHERE name = $2
+	`, isActive, builderName)
+	return err
+}
+
+func (s *Service) ChangeActiveStatusForMeasurement(ctx context.Context, measurementName string, isActive bool) error {
+	// NOTE: we currently enforce uniqueness per name and attestation type not just by name
+	_, err := s.DB.ExecContext(ctx, `
+		UPDATE measurements_whitelist
+		SET is_active = $1
+		WHERE name = $2
+	`, isActive, measurementName)
+	return err
+}
+
+func (s *Service) AddBuilderConfig(ctx context.Context, builderName string, config json.RawMessage) error {
+	// Start a transaction
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}() // Rollback the transaction if it's not committed
+
+	// Deactivate any previous configurations for this builder
+	_, err = tx.Exec(`
+        UPDATE builder_configs
+        SET is_active = false, updated_at = NOW()
+        WHERE builder_name = $1 AND is_active = true
+    `, builderName)
+	if err != nil {
+		return fmt.Errorf("failed to deactivate previous configs for builder %s: %w", builderName, err)
+	}
+
+	// Insert the new configuration as active
+	_, err = tx.Exec(`
+        INSERT INTO builder_configs (builder_name, config, is_active)
+        VALUES ($1, $2, true)
+    `, builderName, config)
+	if err != nil {
+		return fmt.Errorf("failed to insert new config for builder %s: %w", builderName, err)
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction for builder %s: %w", builderName, err)
 	}
 
 	return nil

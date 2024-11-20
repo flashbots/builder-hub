@@ -16,6 +16,7 @@ type BuilderDataAccessor interface {
 	GetBuilderByIP(ip net.IP) (*domain.Builder, error)
 	GetActiveConfigForBuilder(ctx context.Context, builderName string) (json.RawMessage, error)
 	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error
+	LogEvent(ctx context.Context, eventName, builderName, name string) error
 }
 
 type SecretAccessor interface {
@@ -37,6 +38,10 @@ func (b *BuilderHub) GetAllowedMeasurements(ctx context.Context) ([]domain.Measu
 
 func (b *BuilderHub) GetActiveBuilders(ctx context.Context) ([]domain.BuilderWithServices, error) {
 	return b.dataAccessor.GetActiveBuildersWithServiceCredentials(ctx)
+}
+
+func (b *BuilderHub) LogEvent(ctx context.Context, eventName, builderName, name string) error {
+	return b.dataAccessor.LogEvent(ctx, eventName, builderName, name)
 }
 
 func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error {
