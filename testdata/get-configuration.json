@@ -125,5 +125,10 @@
         "output_cw_log_group_name": "multioperator-builder",
         "aws_access_key_id": "xxx",
         "aws_secret_access_key": "xxx"
+    },
+    "system_api": {
+        "__version": "v0.7.0",
+        "basic_auth_secret_salt": "xxx",
+        "basic_auth_secret_hash": "xxx"
     }
 }
