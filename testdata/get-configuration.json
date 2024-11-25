@@ -16,7 +16,8 @@
         "public_listen_addr": "0.0.0.0:5544",
         "cert_hosts": "1.2.3.4,localhost,127.0.0.1",
         "builder_confighub_endpoint": "http://127.0.0.1:7937",
-        "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net"
+        "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net",
+        "conn_per_peer": "50"
     },
     "rbuilder": {
         "__version": "v0.1.0-26-g18875a4",
