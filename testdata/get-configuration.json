@@ -6,8 +6,9 @@
         "secret_access_key": "string",
         "bucket_endpoint": "string"
     },
-    "bidding_service_download": {
-        "github_token": "string"
+    "bidding_service": {
+        "github_token": "string",
+        "config#base64": "aGVsbG8Kd29ybGQhCg=="
     },
     "orderflow_proxy": {
         "flashbots_orderflow_signing_address": "0x00",
@@ -29,6 +30,8 @@
         "always_seal": true,
         "dry_run": true,
         "dry_run_validation_url": "http://localhost:8545",
+        "top_bid_ws_basic_auth": "Zmxhc2hib3RzOmRvbnRwZWVrb25tZQ==",
+        "top_bid_ws_url": "ws://localhost:8546",
         "relays": [
             {
                 "name": "flashbots",
