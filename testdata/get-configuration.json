@@ -1,5 +1,7 @@
 {
     "instance_name": "tdx-multioperator-builder-01",
+    "public_ip": "1.2.3.4",
+    "dns_name": "multioperator-builder-01.builder.flashbots.net",
     "rclone": {
         "__version": "v1.66.0-DEV",
         "access_key_id": "string",
@@ -12,9 +14,8 @@
     "orderflow_proxy": {
         "flashbots_orderflow_signing_address": "0x00",
         "builder_endpoint": "http://127.0.0.1:8645",
-        "local_listen_addr": "0.0.0.0:443",
+        "local_listen_addr": "127.0.0.1:3443",
         "public_listen_addr": "0.0.0.0:5544",
-        "cert_hosts": "1.2.3.4,localhost,127.0.0.1",
         "builder_confighub_endpoint": "http://127.0.0.1:7937",
         "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net",
         "conn_per_peer": "50"
