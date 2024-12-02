@@ -89,6 +89,12 @@
                 "localhost:8090"
             ]
         },
+        "haproxy_metrics": {
+            "enabled": true,
+            "targets": [
+                "localhost:8405"
+            ]
+        },
         "remote_write": [
             {
                 "name": "tdx-rbuilder-collector",
