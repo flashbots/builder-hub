@@ -52,6 +52,9 @@
             }
         ]
     },
+    "disk_encryption": {
+        "key": "string"
+    },
     "prometheus": {
         "__version": "2.54.0",
         "scrape_interval": "10s",
