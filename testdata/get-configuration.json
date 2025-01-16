@@ -18,39 +18,20 @@
         "local_listen_addr": "127.0.0.1:3443",
         "public_listen_addr": "0.0.0.0:5544",
         "builder_confighub_endpoint": "http://127.0.0.1:7937",
-        "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net",
+        "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net/api",
         "conn_per_peer": "50"
     },
     "rbuilder": {
         "__version": "v0.1.0-26-g18875a4",
-        "extra_data": "Illuminate Dmocrtz Dstrib Prtct",
+        "extra_data": "BuilderNet (Flashbots)",
         "relay_secret_key": "0x00",
         "optimistic_relay_secret_key": "0x00",
         "coinbase_secret_key": "0x00",
         "top_bid_stream_api_key": "0x00",
         "always_seal": true,
         "dry_run": true,
-        "dry_run_validation_url": "http://localhost:8545",
         "top_bid_ws_basic_auth": "Zmxhc2hib3RzOmRvbnRwZWVrb25tZQ==",
-        "top_bid_ws_url": "ws://localhost:8546",
-        "relays": [
-            {
-                "name": "flashbots",
-                "url": "https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net",
-                "use_ssz_for_submit": true,
-                "use_gzip_for_submit": false,
-                "priority": 0,
-                "optimistic": false
-            },
-            {
-                "name": "ultrasound",
-                "url": "https://0xa1559ace749633b997cb3fdacffb890aeebdb0f5a3b6aaa7eeeaf1a38af0a8fe88b9e4b1f61f236d2e64d95733327a62@relay.ultrasound.money",
-                "use_ssz_for_submit": true,
-                "use_gzip_for_submit": true,
-                "priority": 1,
-                "optimistic": true
-            }
-        ]
+        "top_bid_ws_url": "ws://localhost:8546"
     },
     "disk_encryption": {
         "key": "string"
