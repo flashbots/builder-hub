@@ -5,31 +5,33 @@
     "rclone": {
         "__version": "v1.66.0-DEV",
         "access_key_id": "string",
-        "secret_access_key": "string",
-        "bucket_endpoint": "string"
+        "bucket_endpoint": "string",
+        "secret_access_key": "string"
     },
     "bidding_service": {
-        "github_token": "string",
-        "config#base64": "aGVsbG8Kd29ybGQhCg=="
+        "config#base64": "aGVsbG8Kd29ybGQhCg==",
+        "github_token": "string"
     },
     "orderflow_proxy": {
-        "flashbots_orderflow_signing_address": "0x00",
-        "builder_endpoint": "http://127.0.0.1:8645",
-        "local_listen_addr": "127.0.0.1:3443",
-        "public_listen_addr": "0.0.0.0:5544",
         "builder_confighub_endpoint": "http://127.0.0.1:7937",
+        "builder_endpoint": "http://127.0.0.1:8645",
+        "conn_per_peer": "50",
+        "flashbots_orderflow_signing_address": "0x00",
+        "local_listen_addr": "127.0.0.1:3443",
         "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net/api",
-        "conn_per_peer": "50"
+        "public_listen_addr": "0.0.0.0:5544"
     },
     "rbuilder": {
-        "__version": "v0.1.0-26-g18875a4",
-        "extra_data": "BuilderNet (Flashbots)",
-        "relay_secret_key": "0x00",
-        "optimistic_relay_secret_key": "0x00",
+        "__version": "v0.1.5",
+        "blocklist": "<blocklist URL or local path>",
         "coinbase_secret_key": "0x00",
-        "top_bid_stream_api_key": "0x00",
-        "always_seal": true,
         "dry_run": true,
+        "extra_data": "BuilderNet (Flashbots)",
+        "optimistic_relay_secret_key": "0x00",
+        "relay_secret_key": "0x00",
+        "relays#base64": "W1tyZWxheXNdXQpjb25maWcK",
+        "require_non_empty_blocklist": false,
+        "top_bid_stream_api_key": "0x00",
         "top_bid_ws_basic_auth": "Zmxhc2hib3RzOmRvbnRwZWVrb25tZQ==",
         "top_bid_ws_url": "ws://localhost:8546"
     },
@@ -116,9 +118,9 @@
     },
     "fluentbit": {
         "__version": "v1.9.7",
-        "input_tags": "tag-1 tag-2",
-        "output_cw_log_group_name": "multioperator-builder",
         "aws_access_key_id": "xxx",
-        "aws_secret_access_key": "xxx"
+        "aws_secret_access_key": "xxx",
+        "input_tags": "tag-1 tag-2",
+        "output_cw_log_group_name": "multioperator-builder"
     }
 }
