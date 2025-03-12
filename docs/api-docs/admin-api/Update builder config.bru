@@ -1,0 +1,20 @@
+meta {
+  name: Update builder config
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:8081/api/admin/v1/builders/configuration/{builder}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "dns_name": "foobar-v1.a.b.c",
+    "rbuilder": {
+      "extra_data": "FooBar"
+    }
+  }
+}

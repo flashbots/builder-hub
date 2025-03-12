@@ -1,0 +1,29 @@
+meta {
+  name: Add measurements
+  type: http
+  seq: 8
+}
+
+post {
+  url: http://localhost:8081/api/admin/v1/measurements
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "measurement_id": "buildernet-v1.2.1-rc1-azure-tdx-2fbda0c258c7a335fd5c89aeebb868cd6a3d6f26ed329638017884c17ef9ea97.wic.vhd",
+    "attestation_type": "azure-tdx",
+    "measurements": {
+      "4": {
+        "expected": "18e71bdf677a6138fce971ef56f069cedc9b312970cc5a174e57113617aa8738"
+      },
+      "9": {
+        "expected": "b1bef3012caf44508fd28194a379f625f622003298c81e9b04a9dc506760691d"
+      },
+      "11": {
+        "expected": "206b43acd2327a5731e5872f5052efb01f05c71d9d00634d8e38296fcfc18c0d"
+      }
+    }
+  }
+}

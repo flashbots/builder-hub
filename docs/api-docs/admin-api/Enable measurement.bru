@@ -1,0 +1,17 @@
+meta {
+  name: Enable measurement
+  type: http
+  seq: 9
+}
+
+post {
+  url: http://localhost:8081/api/admin/v1/measurements/activation/{measurement}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "enabled": true
+  }
+}
