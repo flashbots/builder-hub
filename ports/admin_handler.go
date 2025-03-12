@@ -152,17 +152,23 @@ func (s *AdminHandler) ChangeActiveStatusForBuilder(w http.ResponseWriter, r *ht
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	_, err = s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
-	if errors.Is(err, domain.ErrNotFound) {
-		s.log.Warn("no active config for builder found", "error", err)
-		w.WriteHeader(http.StatusNotFound)
-		return
+
+	// we only ensure existence of active config for `activation` request
+	// `deactivation` request must pass through for an ease of deactivation incorrect/rouge deployments
+	if activationRequest.Enabled {
+		_, err = s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
+		if errors.Is(err, domain.ErrNotFound) {
+			s.log.Warn("no active config for builder found", "error", err)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			s.log.Error("failed to fetch active config for builder", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
-	if err != nil {
-		s.log.Error("failed to fetch active config for builder", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+
 	err = s.builderService.ChangeActiveStatusForBuilder(r.Context(), builderName, activationRequest.Enabled)
 	if err != nil {
 		s.log.Error("failed to change active status for builder", "error", err)
