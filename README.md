@@ -95,6 +95,8 @@ make fmt
 | Get Allowed Measurements | Internal | HTTP Basic Auth              | Users, Builders               | nginx → BuilderHub     |
 | Admin Endpoints          | Internal | HTTP Basic Auth              |                               |                        |
 
+See also a [Bruno collection](https://www.usebruno.com/) (Postman alternative) in [`docs/api-docs/`](./docs/api-docs/).
+
 ---
 
 ### Get Secrets + Configuration

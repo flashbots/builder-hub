@@ -1,0 +1,17 @@
+meta {
+  name: Disable builder
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:8081/api/admin/v1/measurements/activation/{builder}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "enabled": true
+  }
+}

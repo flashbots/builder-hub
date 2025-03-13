@@ -1,0 +1,11 @@
+meta {
+  name: Get Builders
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:8081/api/admin/v1/builders/configuration/{builder}/full
+  body: none
+  auth: none
+}

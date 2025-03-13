@@ -1,0 +1,18 @@
+meta {
+  name: Add new builder
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8081/api/admin/v1/builders
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "{builder}",
+    "ip_address": "{ip_address}"
+  }
+}
