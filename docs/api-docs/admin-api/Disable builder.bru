@@ -5,13 +5,13 @@ meta {
 }
 
 post {
-  url: http://localhost:8081/api/admin/v1/measurements/activation/{builder}
+  url: http://localhost:8081/api/admin/v1/builders/activation/{builder}
   body: json
   auth: none
 }
 
 body:json {
   {
-    "enabled": true
+    "enabled": false
   }
 }
