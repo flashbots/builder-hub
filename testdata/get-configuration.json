@@ -91,6 +91,22 @@
                     "secret_key": "xxx",
                     "region": "us-east-2"
                 }
+            },
+            {
+                "name": "basic-auth-collector",
+                "url": "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write",
+                "basic_auth": {
+                    "username": "xxx",
+                    "password": "xxx"
+                }
+            },
+            {
+                "name": "authorization-collector",
+                "url": "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write",
+                "authorization": {
+                    "type": "Bearer",
+                    "credentials": "xxx"
+                }
             }
         ]
     },
