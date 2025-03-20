@@ -127,7 +127,7 @@
     "haproxy": {
         "rate_limit_privileged_ips": "192.168.1.1 192.168.1.2",
         "rate_limit_conn_rate_regular": "3",
-        "rate_limit_conn_rate_privileged": "500",
+        "rate_limit_conn_rate_privileged": "1000",
         "rate_limit_total_conn_regular": "3",
         "rate_limit_total_conn_privileged": "100",
         "rate_limit_bytes_in_rate_regular": "600000000",
