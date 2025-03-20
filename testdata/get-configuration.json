@@ -19,14 +19,14 @@
         "flashbots_orderflow_signing_address": "0x00",
         "local_listen_addr": "127.0.0.1:3443",
         "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net/api",
-        "public_listen_addr": "0.0.0.0:5544"
+        "public_listen_addr": "0.0.0.0:5544",
+        "max_local_rps": 1000
     },
     "rbuilder": {
         "__version": "v0.1.5",
         "enabled": false,
         "blocklist": "<blocklist URL or local path>",
         "coinbase_secret_key": "0x00",
-        "dry_run": true,
         "extra_data": "BuilderNet (Flashbots)",
         "optimistic_relay_secret_key": "0x00",
         "relay_secret_key": "0x00",
@@ -139,5 +139,14 @@
         "aws_secret_access_key": "xxx",
         "input_tags": "tag-1 tag-2",
         "output_cw_log_group_name": "multioperator-builder"
+    },
+    "haproxy": {
+        "rate_limit_privileged_ips": "192.168.1.1 192.168.1.2",
+        "rate_limit_conn_rate_regular": "3",
+        "rate_limit_conn_rate_privileged": "1000",
+        "rate_limit_total_conn_regular": "3",
+        "rate_limit_total_conn_privileged": "100",
+        "rate_limit_bytes_in_rate_regular": "600000000",
+        "rate_limit_bytes_in_rate_privileged": "6000000000"
     }
 }
