@@ -18,23 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type MockSecretService struct {
-	st map[string]map[string]string
-}
-
-func NewMockSecretService() *MockSecretService {
-	return &MockSecretService{st: make(map[string]map[string]string)}
-}
-
-func (mss *MockSecretService) GetSecretValues(builderName string) (map[string]string, error) {
-	return mss.st[builderName], nil
-}
-
-func (mss *MockSecretService) SetSecretValues(builderName string, values map[string]string) error {
-	mss.st[builderName] = values
-	return nil
-}
-
 func TestCreateMultipleBuilders(t *testing.T) {
 	if os.Getenv("RUN_DB_TESTS") != "1" {
 		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
@@ -238,10 +221,10 @@ func createDbService(t *testing.T) *database.Service {
 	return dbService
 }
 
-func createServer(t *testing.T) (*Server, *database.Service, *MockSecretService) {
+func createServer(t *testing.T) (*Server, *database.Service, *domain.InmemorySecretService) {
 	t.Helper()
 	dbService := createDbService(t)
-	mss := NewMockSecretService()
+	mss := domain.NewMockSecretService()
 	bhs := application.NewBuilderHub(dbService, mss)
 	bhh := ports.NewBuilderHubHandler(bhs, getTestLogger())
 	_ = bhh

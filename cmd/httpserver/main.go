@@ -11,6 +11,7 @@ import (
 	"github.com/flashbots/builder-hub/adapters/secrets"
 	"github.com/flashbots/builder-hub/application"
 	"github.com/flashbots/builder-hub/common"
+	"github.com/flashbots/builder-hub/domain"
 	"github.com/flashbots/builder-hub/httpserver"
 	"github.com/flashbots/builder-hub/ports"
 	"github.com/google/uuid"
@@ -84,6 +85,12 @@ var flags = []cli.Flag{
 		Usage:   "AWS Secret name",
 		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME"},
 	},
+	&cli.BoolFlag{
+		Name:    "mock-secrets",
+		Value:   false,
+		Usage:   "Use inmemory secrets service for testing",
+		EnvVars: []string{"MOCK_SECRETS"},
+	},
 }
 
 func main() {
@@ -125,11 +132,18 @@ func main() {
 			}
 			defer db.Close()
 
-			sm, err := secrets.NewService(cCtx.String("secret-name"))
-			if err != nil {
-				log.Error("failed to create secrets manager", "err", err)
-				return err
+			var sm ports.AdminSecretService
+
+			if !cCtx.Bool("mock-secrets") {
+				sm, err = secrets.NewService(cCtx.String("secret-name"))
+				if err != nil {
+					log.Error("failed to create secrets manager", "err", err)
+					return err
+				}
+			} else {
+				sm = domain.NewMockSecretService()
 			}
+
 			builderHub := application.NewBuilderHub(db, sm)
 			builderHandler := ports.NewBuilderHubHandler(builderHub, log)
 
