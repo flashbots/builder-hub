@@ -1,40 +1,30 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
 
 jobs:
-  extract-version:
-    name: Extract version
-    runs-on: ubuntu-latest
-    outputs:
-      VERSION: ${{ steps.extract_version.outputs.VERSION }}
-    steps:
-      - name: Extract version
-        id: extract_version
-        run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME}"
-          else
-            VERSION="$(echo ${GITHUB_SHA} | cut -c1-7)"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-
-  build-and-push:
-    name: Build and Push Docker image
-    needs: [extract-version]
+  docker-image:
+    name: Publish Docker image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    env:
-      VERSION: ${{ needs.extract-version.outputs.VERSION }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Get tag version
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Print version
+        run: |
+          echo $RELEASE_VERSION
+          echo ${{ env.RELEASE_VERSION }}
 
       - name: Set up QEMU (for multi-arch builds, optional)
         uses: docker/setup-qemu-action@v3
@@ -50,12 +40,9 @@ jobs:
           labels: org.opencontainers.image.source=${{ github.repositoryUrl }}
           tags: |
             type=sha
-            type=semver,pattern={{version}},value=${{ env.VERSION }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ env.VERSION }}
-            type=semver,pattern={{major}},value=${{ env.VERSION }}
-            
+            type=semver,pattern={{version}}
             # Also push "latest" if it's a full release (no '-' in version for rc/beta)
-            type=raw,value=latest,enable=${{ !contains(env.VERSION, '-') }}
+            type=raw,value=latest,enable=${{ !contains(env.RELEASE_VERSION, '-') }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -68,8 +55,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            VERSION=${{ env.RELEASE_VERSION }}
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
