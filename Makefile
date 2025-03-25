@@ -69,15 +69,6 @@ cover-html: ## Run tests with coverage and open the HTML report
 	go tool cover -html=/tmp/go-sim-lb.cover.tmp
 	unlink /tmp/go-sim-lb.cover.tmp
 
-.PHONY: docker-cli
-docker-cli: ## Build the CLI Docker image
-	DOCKER_BUILDKIT=1 docker build \
-		--platform linux/amd64 \
-		--build-arg VERSION=${VERSION} \
-		--file cli.dockerfile \
-		--tag your-project \
-	.
-
 .PHONY: docker-httpserver
 docker-httpserver: ## Build the HTTP server Docker image
 	DOCKER_BUILDKIT=1 docker build \
