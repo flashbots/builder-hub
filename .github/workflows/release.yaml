@@ -36,8 +36,6 @@ jobs:
           labels: org.opencontainers.image.source=${{ github.repositoryUrl }}
           tags: |
             type=sha
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_VERSION, '-') }}

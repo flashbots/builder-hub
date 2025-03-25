@@ -75,7 +75,7 @@ var flags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:    "postgres-dsn",
-		Value:   "postgres://localhost:5432/postgres?sslmode=disable",
+		Value:   "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable",
 		Usage:   "Postgres DSN",
 		EnvVars: []string{"POSTGRES_DSN"},
 	},
@@ -118,6 +118,7 @@ func runCli(cCtx *cli.Context) error {
 	logService := cCtx.String("log-service")
 	enablePprof := cCtx.Bool("pprof")
 	drainDuration := time.Duration(cCtx.Int64("drain-seconds")) * time.Second
+	mockSecretsStorage := cCtx.Bool("mock-secrets")
 
 	logTags := map[string]string{
 		"version": common.Version,
@@ -134,6 +135,9 @@ func runCli(cCtx *cli.Context) error {
 		RequestHeaders: true,
 		Tags:           logTags,
 	})
+
+	log.With("version", common.Version).Info("starting builder-hub")
+
 	db, err := database.NewDatabaseService(cCtx.String("postgres-dsn"))
 	if err != nil {
 		log.Error("failed to create database", "err", err)
@@ -143,14 +147,15 @@ func runCli(cCtx *cli.Context) error {
 
 	var sm ports.AdminSecretService
 
-	if !cCtx.Bool("mock-secrets") {
+	if mockSecretsStorage {
+		log.Info("using mock secrets storage")
+		sm = domain.NewMockSecretService()
+	} else {
 		sm, err = secrets.NewService(cCtx.String("secret-name"))
 		if err != nil {
 			log.Error("failed to create secrets manager", "err", err)
 			return err
 		}
-	} else {
-		sm = domain.NewMockSecretService()
 	}
 
 	builderHub := application.NewBuilderHub(db, sm)
