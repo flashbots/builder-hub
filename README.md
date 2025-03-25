@@ -32,6 +32,9 @@ for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/p
 
 # Start the server
 go run cmd/httpserver/main.go
+
+# Start the server from the Docker image with (mocked secrets backend)
+docker run --net=host -e MOCK_SECRETS=true flashbots/builder-hub:latest
 ```
 
 **Query a few endpoints:**
