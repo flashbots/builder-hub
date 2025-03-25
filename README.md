@@ -32,9 +32,20 @@ for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/p
 
 # Start the server
 go run cmd/httpserver/main.go
+```
 
-# Start the server from the Docker image with (mocked secrets backend)
-docker run --net=host -e MOCK_SECRETS=true flashbots/builder-hub:latest
+**Start everything in Docker from our published images:**
+
+```bash
+# Pull the latest Docker images
+docker pull flashbots/builder-hub
+docker pull flashbots/builder-hub-db
+
+# Start the Postgres container with all applied migrations
+docker run --name builder-hub-db -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres flashbots/builder-hub-db
+
+# Start the server container (with mocked secrets backend)
+docker run --name builder-hub-httpserver --net=host -e MOCK_SECRETS=1 flashbots/builder-hub
 ```
 
 **Query a few endpoints:**

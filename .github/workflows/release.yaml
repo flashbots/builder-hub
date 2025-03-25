@@ -69,6 +69,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
+          file: ./docker/httpserver/Dockerfile
           context: .
           push: true
           build-args: |
@@ -116,7 +117,50 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          file: ./Dockerfile.db
+          file: ./docker/database/Dockerfile
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+
+  docker-image-proxy:
+    name: Publish Proxy Docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: flashbots/builder-hub-mock-proxy
+          tags: |
+            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.FLASHBOTS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.FLASHBOTS_DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU (for multi-arch builds, optional)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          file: ./docker/mock-proxy/Dockerfile
           context: .
           push: true
           platforms: linux/amd64,linux/arm64

@@ -1,0 +1,28 @@
+services:
+  db:
+    image: flashbots/builder-hub-db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  web:
+    image: flashbots/builder-hub
+    links:
+      - "db:database"
+    ports:
+      - 8080:8080
+      - 8081:8081
+      - 8082:8082
+      - 8090:8090
+    environment:
+      POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
+
+  proxy:
+    image: flashbots/builder-hub-mock-proxy
+    links:
+      - "web:web"
+    ports:
+      - 8888:8888
+    environment:
+      TARGET: "http://web:8080"
