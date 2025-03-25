@@ -17,6 +17,7 @@ services:
       - 8090:8090
     environment:
       POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
+      LISTEN_ADDR: "0.0.0.0:8080"
 
   proxy:
     image: flashbots/builder-hub-mock-proxy

@@ -37,15 +37,15 @@ go run cmd/httpserver/main.go
 **Start everything in Docker from our published images:**
 
 ```bash
-# Pull the latest Docker images
-docker pull flashbots/builder-hub
-docker pull flashbots/builder-hub-db
+# Switch into the 'docker' directory
+cd docker
 
-# Start the Postgres container with all applied migrations
-docker run --name builder-hub-db -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres flashbots/builder-hub-db
+# Update and start the services
+docker-compose pull
+docker-compose up
 
-# Start the server container (with mocked secrets backend)
-docker run --name builder-hub-httpserver --net=host -e MOCK_SECRETS=1 flashbots/builder-hub
+# Make an example request
+curl localhost:8888
 ```
 
 **Query a few endpoints:**
