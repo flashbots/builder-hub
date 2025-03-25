@@ -18,6 +18,9 @@ services:
     environment:
       POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
       LISTEN_ADDR: "0.0.0.0:8080"
+      ADMIN_ADDR: "0.0.0.0:8081"
+      INTERNAL_ADDR: "0.0.0.0:8082"
+      METRICS_ADDR: "0.0.0.0:8090"
 
   proxy:
     image: flashbots/builder-hub-mock-proxy
