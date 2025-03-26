@@ -13,13 +13,16 @@ BuilderHub has these responsibilities:
 2. Provisioning of secrets and configuration
 3. Peer discovery
 
-System context diagram:
+---
 
 ![Architecture](https://buildernet.org/assets/ideal-img/flashbots-infra-dataflow.7377b1f.3909.png)
 
 ---
 
 ## Getting started
+
+
+### Manual setup
 
 **Start the database and the server:**
 
@@ -34,21 +37,11 @@ for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/p
 go run cmd/httpserver/main.go
 ```
 
-**Start everything in Docker from our published images:**
+### Using Docker
 
-```bash
-# Switch into the 'docker' directory
-cd docker
+See instructions on using Docker to run the full stack at [`docs/devenv-setup.md`](./docs/devenv-setup.md)
 
-# Update and start the services
-docker-compose pull
-docker-compose up
-
-# Make an example request
-curl localhost:8888
-```
-
-**Query a few endpoints:**
+### Example requests
 
 ```bash
 # Public endpoints
@@ -60,16 +53,12 @@ curl localhost:8080/api/l1-builder/v1/configuration
 curl -X POST localhost:8080/api/l1-builder/v1/register_credentials/rbuilder
 ```
 
-Run database tests>
+### Testing
+
+Run test suite with database tests included:
 
 ```bash
 RUN_DB_TESTS=1 make test
-```
-
-**Stop the database:**
-
-```bash
-docker rm -f postgres-test
 ```
 
 ---

@@ -4,6 +4,11 @@
 
 VERSION := $(shell git describe --tags --always --dirty="-dev")
 
+# A few colors
+RED:=\033[0;31m
+GREEN:=\033[0;32m
+NC:=\033[0m
+
 ##@ Help
 
 .PHONY: help
@@ -27,6 +32,16 @@ build: ## Build the HTTP server
 
 ##@ Test & Development
 
+.PHONY: lt
+lt: lint test ## Run linters and tests (always do this!)
+
+.PHONY: fmt
+fmt: ## Format the code (use this often)
+	gofmt -s -w .
+	gci write .
+	gofumpt -w -extra .
+	go mod tidy
+
 .PHONY: test
 test: ## Run tests
 	go test ./...
@@ -43,19 +58,9 @@ lint: ## Run linters
 	staticcheck ./...
 	golangci-lint run
 
-.PHONY: fmt
-fmt: ## Format the code
-	gofmt -s -w .
-	gci write .
-	gofumpt -w -extra .
-	go mod tidy
-
 .PHONY: gofumpt
 gofumpt: ## Run gofumpt
 	gofumpt -l -w -extra .
-
-.PHONY: lt
-lt: lint test ## Run linters and tests
 
 .PHONY: cover
 cover: ## Run tests with coverage
@@ -72,8 +77,30 @@ cover-html: ## Run tests with coverage and open the HTML report
 .PHONY: docker-httpserver
 docker-httpserver: ## Build the HTTP server Docker image
 	DOCKER_BUILDKIT=1 docker build \
+		--file docker/httpserver/Dockerfile \
 		--platform linux/amd64 \
 		--build-arg VERSION=${VERSION} \
-		--file httpserver.dockerfile \
-		--tag your-project \
+		--tag builder-hub \
 	.
+
+.PHONY: db-dump
+db-dump: ## Dump the database contents to file 'database.dump'
+	pg_dump -h localhost -U postgres --column-inserts --data-only postgres -f database.dump
+	@printf "Database dumped to file: $(GREEN)database.dump$(NC) ✅\n"
+
+.PHONY: dev-db-setup
+db-dev-setup: ## Create the basic database entries for testing and development
+	@printf "$(GREEN)Create the allow-all measurements $(NC)\n"
+	curl --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
+
+	@printf "$(GREEN)Enable the measurements $(NC)\n"
+	curl --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'
+
+	@printf "$(GREEN)Create the builder $(NC)\n"
+	curl --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4"}'
+
+	@printf "$(GREEN)Create the builder configuration $(NC)\n"
+	curl --request POST --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder --data '{"dns_name": "foobar-v1.a.b.c","rbuilder": {"extra_data": "FooBar"}}'
+
+	@printf "$(GREEN)Enable the builder $(NC)\n"
+	curl --request POST --url http://localhost:8081/api/admin/v1/builders/activation/test_builder --data '{"enabled": true}'

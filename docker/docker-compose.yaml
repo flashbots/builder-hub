@@ -1,13 +1,15 @@
 services:
   db:
     image: flashbots/builder-hub-db
+    ports:
+      - 5432:5432
     environment:
       PGUSER: postgres
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_PASSWORD}"]
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 5s
       retries: 5
       start_period: 2s
@@ -27,6 +29,7 @@ services:
       - 8082:8082
       - 8090:8090
     environment:
+      MOCK_SECRETS: true
       POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
       LISTEN_ADDR: "0.0.0.0:8080"
       ADMIN_ADDR: "0.0.0.0:8081"
