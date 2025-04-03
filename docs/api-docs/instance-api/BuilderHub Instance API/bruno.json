@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "BuilderHub Instance API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
