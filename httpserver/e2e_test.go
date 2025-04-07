@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,9 +25,105 @@ func TestCreateMultipleBuilders(t *testing.T) {
 	}
 	s, _, _ := createServer(t)
 
-	createBuilder(t, s, "test-builder-1", "127.0.0.1")
-	createBuilder(t, s, "test-builder-2", "127.0.0.2")
-	createBuilder(t, s, "test-builder-3", "127.0.0.3")
+	createBuilder(t, s, "test-builder-1", "127.0.0.1", domain.ProductionNetwork)
+	createBuilder(t, s, "test-builder-2", "127.0.0.2", domain.ProductionNetwork)
+	createBuilder(t, s, "test-builder-3", "127.0.0.3", domain.ProductionNetwork)
+}
+
+func TestCreateMultipleNetworkBuilders(t *testing.T) {
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
+	s, _, _ := createServer(t)
+
+	createBuilder(t, s, "production-1", "127.0.0.1", domain.ProductionNetwork)
+	createBuilder(t, s, "production-2", "127.0.0.2", domain.ProductionNetwork)
+	createBuilder(t, s, "production-3", "127.0.0.3", domain.ProductionNetwork)
+
+	createBuilder(t, s, "test-1", "127.0.1.1", "test-network")
+	createBuilder(t, s, "test-2", "127.0.1.2", "test-network")
+	createBuilder(t, s, "test-3", "127.0.1.3", "test-network")
+	createBuilder(t, s, "test-4", "127.0.1.4", "test-network")
+
+	measurement := ports.Measurement{
+		Name:            "test-measurement-1",
+		AttestationType: "test-attestation-type-1",
+		Measurements: map[string]domain.SingleMeasurement{
+			"8": {
+				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
+			},
+			"11": {
+				Expected: "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7",
+			},
+		},
+	}
+	createMeasurement(t, s, measurement)
+
+	t.Run("NoAuthV1", func(t *testing.T) {
+		var resp []ports.BuilderWithServiceCreds
+		sc, _ := execRequestNoAuth(t, s.GetInternalRouter(), http.MethodGet, "/api/internal/l1-builder/v1/builders", nil, &resp)
+		require.Equal(t, http.StatusOK, sc)
+		require.Len(t, resp, 3)
+		validNames := []string{"production-1", "production-2", "production-3"}
+		for _, b := range resp {
+			if !slices.Contains(validNames, b.Name) {
+				require.Fail(t, "Builder not found")
+			}
+		}
+	})
+
+	t.Run("NoAuthV2 Networked", func(t *testing.T) {
+		var resp []ports.BuilderWithServiceCreds
+		sc, _ := execRequestNoAuth(t, s.GetInternalRouter(), http.MethodGet, fmt.Sprintf("/api/internal/l1-builder/v2/network/%s/builders", domain.ProductionNetwork), nil, &resp)
+		require.Equal(t, http.StatusOK, sc)
+		require.Len(t, resp, 3)
+		validNames := []string{"production-1", "production-2", "production-3"}
+		for _, b := range resp {
+			if !slices.Contains(validNames, b.Name) {
+				require.Fail(t, "Builder not found")
+			}
+		}
+	})
+
+	t.Run("NoAuthV2 Networked other network", func(t *testing.T) {
+		var resp []ports.BuilderWithServiceCreds
+		sc, _ := execRequestNoAuth(t, s.GetInternalRouter(), http.MethodGet, fmt.Sprintf("/api/internal/l1-builder/v2/network/%s/builders", "test-network"), nil, &resp)
+		require.Equal(t, http.StatusOK, sc)
+		require.Len(t, resp, 4)
+		validNames := []string{"test-1", "test-2", "test-3", "test-4"}
+		for _, b := range resp {
+			if !slices.Contains(validNames, b.Name) {
+				require.Fail(t, "Builder not found")
+			}
+		}
+	})
+
+	t.Run("Auth active builders prod", func(t *testing.T) {
+		resp := make([]ports.BuilderWithServiceCreds, 0)
+		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &resp, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.0.1")
+		require.Equal(t, http.StatusOK, status)
+		require.Len(t, resp, 3)
+		validNames := []string{"production-1", "production-2", "production-3"}
+		for _, b := range resp {
+			if !slices.Contains(validNames, b.Name) {
+				require.Fail(t, "Builder not found")
+			}
+		}
+	})
+
+	t.Run("Auth active builders other network", func(t *testing.T) {
+		resp := make([]ports.BuilderWithServiceCreds, 0)
+		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &resp, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.1.1")
+		require.Equal(t, http.StatusOK, status)
+		require.Len(t, resp, 4)
+		validNames := []string{"test-1", "test-2", "test-3", "test-4"}
+		for _, b := range resp {
+			if !slices.Contains(validNames, b.Name) {
+				require.Fail(t, "Builder not found")
+			}
+		}
+	})
+
 }
 
 func TestCreateMultipleMeasurements(t *testing.T) {
@@ -70,7 +167,7 @@ func TestAuthInteractionFlow(t *testing.T) {
 
 	builderName := "test_builder_1"
 	ip := "127.0.0.1"
-	createBuilder(t, s, builderName, ip)
+	createBuilder(t, s, builderName, ip, domain.ProductionNetwork)
 	measurement := ports.Measurement{
 		Name:            "test-measurement-1",
 		AttestationType: "test-attestation-type-1",
@@ -131,10 +228,11 @@ func TestAuthInteractionFlow(t *testing.T) {
 }
 
 // createBuilder emulates admin flow to provision a builder
-func createBuilder(t *testing.T, s *Server, builderName, ip string) {
+func createBuilder(t *testing.T, s *Server, builderName, ip, network string) {
 	builder := ports.Builder{
 		Name:      builderName,
 		IPAddress: ip,
+		Network:   network,
 	}
 	t.Run("CreateBuilder", func(t *testing.T) {
 		sc, _ := execRequestNoAuth(t, s.GetAdminRouter(), http.MethodPost, "/api/admin/v1/builders", builder, nil)
@@ -161,7 +259,7 @@ func createBuilder(t *testing.T, s *Server, builderName, ip string) {
 	t.Run("CheckBuilder", func(t *testing.T) {
 		// Check if the builder is created
 		var resp []ports.BuilderWithServiceCreds
-		sc, _ := execRequestNoAuth(t, s.GetInternalRouter(), http.MethodGet, "/api/internal/l1-builder/v1/builders", nil, &resp)
+		sc, _ := execRequestNoAuth(t, s.GetInternalRouter(), http.MethodGet, fmt.Sprintf("/api/internal/l1-builder/v2/network/%s/builders", network), nil, &resp)
 		require.Equal(t, http.StatusOK, sc)
 		// require.Len(t, resp, 1)
 		for _, b := range resp {

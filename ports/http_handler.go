@@ -17,7 +17,7 @@ import (
 
 type BuilderHubService interface {
 	GetAllowedMeasurements(ctx context.Context) ([]domain.Measurement, error)
-	GetActiveBuilders(ctx context.Context) ([]domain.BuilderWithServices, error)
+	GetActiveBuilders(ctx context.Context, network string) ([]domain.BuilderWithServices, error)
 	VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error)
 	GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error)
 	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error
@@ -108,7 +108,7 @@ func (bhs *BuilderHubHandler) GetActiveBuilders(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	_, _, err = bhs.builderHubService.VerifyIPAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
+	builder, _, err := bhs.builderHubService.VerifyIPAndMeasurements(r.Context(), authData.IP, authData.MeasurementData, authData.AttestationType)
 	if errors.Is(err, domain.ErrNotFound) {
 		bhs.log.Warn("invalid auth data", "error", err)
 		w.WriteHeader(http.StatusForbidden)
@@ -120,7 +120,7 @@ func (bhs *BuilderHubHandler) GetActiveBuilders(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	builders, err := bhs.builderHubService.GetActiveBuilders(r.Context())
+	builders, err := bhs.builderHubService.GetActiveBuilders(r.Context(), builder.Network)
 	if err != nil {
 		bhs.log.Error("failed to fetch active builders from db", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -143,7 +143,37 @@ func (bhs *BuilderHubHandler) GetActiveBuilders(w http.ResponseWriter, r *http.R
 }
 
 func (bhs *BuilderHubHandler) GetActiveBuildersNoAuth(w http.ResponseWriter, r *http.Request) {
-	builders, err := bhs.builderHubService.GetActiveBuilders(r.Context())
+	builders, err := bhs.builderHubService.GetActiveBuilders(r.Context(), domain.ProductionNetwork)
+	if err != nil {
+		bhs.log.Error("failed to fetch active builders from db", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var pBuilders []BuilderWithServiceCreds
+	for _, b := range builders {
+		pBuilders = append(pBuilders, fromDomainBuilderWithServices(b))
+	}
+	bts, err := json.Marshal(pBuilders)
+	if err != nil {
+		bhs.log.Error("failed to marshal builders", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write(bts)
+	if err != nil {
+		bhs.log.Error("failed to write response", "error", err)
+	}
+}
+
+func (bhs *BuilderHubHandler) GetActiveBuildersNoAuthNetworked(w http.ResponseWriter, r *http.Request) {
+	network := chi.URLParam(r, "network")
+	if network == "" {
+		bhs.log.Warn("network is empty")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	builders, err := bhs.builderHubService.GetActiveBuilders(r.Context(), network)
 	if err != nil {
 		bhs.log.Error("failed to fetch active builders from db", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

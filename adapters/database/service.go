@@ -148,7 +148,7 @@ func (s *Service) GetActiveConfigForBuilder(ctx context.Context, builderName str
 	return config.Config, err
 }
 
-func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) ([]domain.BuilderWithServices, error) {
+func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, network string) ([]domain.BuilderWithServices, error) {
 	rows, err := s.DB.QueryContext(ctx, `
         SELECT 
             b.name,
@@ -161,10 +161,10 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context) (
         LEFT JOIN 
             service_credential_registrations scr ON b.name = scr.builder_name
         WHERE 
-            b.is_active = true AND (scr.is_active = true OR scr.is_active IS NULL)
+            b.is_active = true AND (scr.is_active = true OR scr.is_active IS NULL) AND b.network = $1
         ORDER BY 
             b.name, scr.service
-    `)
+    `, network)
 	if err != nil {
 		return nil, err
 	}
@@ -256,9 +256,9 @@ func (s *Service) AddBuilder(ctx context.Context, builder domain.Builder) error 
 		return err
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		INSERT INTO builders (name, ip_address, is_active)
-		VALUES ($1, $2, $3)
-	`, builder.Name, bIP, builder.IsActive)
+		INSERT INTO builders (name, ip_address, is_active, network)
+		VALUES ($1, $2, $3, $4)
+	`, builder.Name, bIP, builder.IsActive, builder.Network)
 	return err
 }
 

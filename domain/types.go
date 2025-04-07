@@ -14,6 +14,8 @@ var (
 	ErrInvalidMeasurement = errors.New("no such active measurement found")
 )
 
+const ProductionNetwork = "production"
+
 const EventGetConfig = "GetConfig"
 
 type Measurement struct {
@@ -38,6 +40,7 @@ type Builder struct {
 	Name      string `json:"name"`
 	IPAddress net.IP `json:"ip_address"`
 	IsActive  bool   `json:"is_active"`
+	Network   string `json:"network"`
 }
 
 type BuilderWithServices struct {

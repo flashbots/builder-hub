@@ -97,6 +97,7 @@ func (srv *Server) GetRouter() http.Handler {
 	mux.Get("/api/l1-builder/v1/builders", srv.appHandler.GetActiveBuilders)
 	mux.Post("/api/l1-builder/v1/register_credentials/{service}", srv.appHandler.RegisterCredentials)
 	mux.Get("/api/internal/l1-builder/v1/builders", srv.appHandler.GetActiveBuildersNoAuth)
+	mux.Get("/api/internal/l1-builder/v2/network/{network}/builders", srv.appHandler.GetActiveBuildersNoAuthNetworked)
 	if srv.cfg.EnablePprof {
 		srv.log.Info("pprof API enabled")
 		mux.Mount("/debug", middleware.Profiler())
@@ -133,6 +134,7 @@ func (srv *Server) GetInternalRouter() http.Handler {
 
 	mux.Get("/api/l1-builder/v1/measurements", srv.appHandler.GetAllowedMeasurements)
 	mux.Get("/api/internal/l1-builder/v1/builders", srv.appHandler.GetActiveBuildersNoAuth)
+	mux.Get("/api/internal/l1-builder/v2/network/{network}/builders", srv.appHandler.GetActiveBuildersNoAuthNetworked)
 
 	return mux
 }

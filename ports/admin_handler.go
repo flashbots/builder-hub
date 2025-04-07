@@ -125,6 +125,12 @@ func (s *AdminHandler) AddBuilder(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	if builder.Network == "" {
+		s.log.Error("Failed to unmarshal request body", "err", err)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("network field is required"))
+		return
+	}
 	dBuilder, err := toDomainBuilder(builder, false)
 	if err != nil {
 		s.log.Error("Failed to convert builder to domain builder", "err", err)

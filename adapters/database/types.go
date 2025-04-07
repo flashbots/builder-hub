@@ -44,6 +44,7 @@ type Builder struct {
 	Name         string      `db:"name"`
 	IPAddress    pgtype.Inet `db:"ip_address"`
 	IsActive     bool        `db:"is_active"`
+	Network      string      `db:"network"`
 	CreatedAt    time.Time   `db:"created_at"`
 	UpdatedAt    time.Time   `db:"updated_at"`
 	DeprecatedAt *time.Time  `db:"deprecated_at"`
@@ -57,6 +58,7 @@ func convertBuilderToDomain(builder Builder) (*domain.Builder, error) {
 		Name:      builder.Name,
 		IPAddress: builder.IPAddress.IPNet.IP,
 		IsActive:  builder.IsActive,
+		Network:   builder.Network,
 	}, nil
 }
 
