@@ -31,6 +31,7 @@
         "builders": "[[builders]]builder1 config\n[[builders]]builder2 config",
         "coinbase_secret_key": "0x00",
         "extra_data": "BuilderNet (Flashbots)",
+        "live_builders": "[\"mgp-ordering\", \"mp-ordering\", \"mp-ordering-cb\", \"mp-ordering-deadline\"]",
         "optimistic_relay_secret_key": "0x00",
         "relay_secret_key": "0x00",
         "relays": "[[relays]]relay1 config\n[[relays]]relay2 config",
