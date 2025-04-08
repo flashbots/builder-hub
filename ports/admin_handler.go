@@ -126,7 +126,7 @@ func (s *AdminHandler) AddBuilder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if builder.Network == "" {
-		s.log.Error("Failed to unmarshal request body", "err", err)
+		s.log.Error("network field is required")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("network field is required"))
 		return
