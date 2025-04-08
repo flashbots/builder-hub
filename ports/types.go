@@ -132,6 +132,7 @@ func toDomainMeasurement(measurement Measurement) domain.Measurement {
 type Builder struct {
 	Name      string `json:"name"`
 	IPAddress string `json:"ip_address"`
+	Network   string `json:"network"`
 }
 
 func toDomainBuilder(builder Builder, enabled bool) (domain.Builder, error) {
@@ -144,5 +145,6 @@ func toDomainBuilder(builder Builder, enabled bool) (domain.Builder, error) {
 		Name:      builder.Name,
 		IPAddress: ip,
 		IsActive:  enabled,
+		Network:   builder.Network,
 	}, nil
 }

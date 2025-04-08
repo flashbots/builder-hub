@@ -11,7 +11,7 @@ import (
 
 type BuilderDataAccessor interface {
 	GetActiveMeasurements(ctx context.Context) ([]domain.Measurement, error)
-	GetActiveBuildersWithServiceCredentials(ctx context.Context) ([]domain.BuilderWithServices, error)
+	GetActiveBuildersWithServiceCredentials(ctx context.Context, network string) ([]domain.BuilderWithServices, error)
 	GetActiveMeasurementsByType(ctx context.Context, attestationType string) ([]domain.Measurement, error)
 	GetBuilderByIP(ip net.IP) (*domain.Builder, error)
 	GetActiveConfigForBuilder(ctx context.Context, builderName string) (json.RawMessage, error)
@@ -36,8 +36,8 @@ func (b *BuilderHub) GetAllowedMeasurements(ctx context.Context) ([]domain.Measu
 	return b.dataAccessor.GetActiveMeasurements(ctx)
 }
 
-func (b *BuilderHub) GetActiveBuilders(ctx context.Context) ([]domain.BuilderWithServices, error) {
-	return b.dataAccessor.GetActiveBuildersWithServiceCredentials(ctx)
+func (b *BuilderHub) GetActiveBuilders(ctx context.Context, network string) ([]domain.BuilderWithServices, error) {
+	return b.dataAccessor.GetActiveBuildersWithServiceCredentials(ctx, network)
 }
 
 func (b *BuilderHub) LogEvent(ctx context.Context, eventName, builderName, name string) error {

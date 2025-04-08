@@ -19,16 +19,21 @@ func TestGetBuilder(t *testing.T) {
 	if err != nil {
 		t.Errorf("NewDatabaseService() = %v; want nil", err)
 	}
+	_, err = serv.DB.Exec("TRUNCATE TABLE public.builders CASCADE")
+	require.NoError(t, err)
+	_, err = serv.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")
+	require.NoError(t, err)
+
 	t.Run("GetBuilder2", func(t *testing.T) {
 		t.Run("should return a builder", func(t *testing.T) {
-			_, err := serv.DB.Exec("INSERT INTO public.builders (name, ip_address, is_active, created_at, updated_at) VALUES ('flashbots-builder', '192.168.1.1', true, '2024-10-11 13:05:56.845615 +00:00', '2024-10-11 13:05:56.845615 +00:00');")
+			_, err := serv.DB.Exec("INSERT INTO public.builders (name, ip_address, is_active, created_at, updated_at, network) VALUES ('flashbots-builder', '192.168.1.1', true, '2024-10-11 13:05:56.845615 +00:00', '2024-10-11 13:05:56.845615 +00:00', 'production');")
 			require.NoError(t, err)
 			whitelist, err := serv.GetBuilderByIP(net.ParseIP("192.168.1.1"))
 			require.NoError(t, err)
 			require.Equal(t, whitelist.Name, "flashbots-builder")
 		})
 		t.Run("get all active builders", func(t *testing.T) {
-			whitelist, err := serv.GetActiveBuildersWithServiceCredentials(context.Background())
+			whitelist, err := serv.GetActiveBuildersWithServiceCredentials(context.Background(), domain.ProductionNetwork)
 			require.Nil(t, err)
 			require.Lenf(t, whitelist, 1, "expected 1 builder, got %d", len(whitelist))
 			require.Equal(t, whitelist[0].Builder.Name, "flashbots-builder")
@@ -44,9 +49,9 @@ func TestGetBuilder(t *testing.T) {
 }
 
 func TestAdminFlow(t *testing.T) {
-	//if os.Getenv("RUN_DB_TESTS") != "1" {
-	//	t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
-	//}
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
 	dbService, err := NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		t.Errorf("NewDatabaseService() = %v; want nil", err)
@@ -65,6 +70,7 @@ func TestAdminFlow(t *testing.T) {
 			builder := domain.Builder{
 				Name:      "test-builder",
 				IPAddress: net.ParseIP("127.0.0.1"),
+				Network:   domain.ProductionNetwork,
 				IsActive:  false,
 			}
 			err := dbService.AddBuilder(context.Background(), builder)
@@ -76,7 +82,7 @@ func TestAdminFlow(t *testing.T) {
 			require.NoError(t, err)
 		})
 		t.Run("get builders", func(t *testing.T) {
-			builders, err := dbService.GetActiveBuildersWithServiceCredentials(context.Background())
+			builders, err := dbService.GetActiveBuildersWithServiceCredentials(context.Background(), "")
 			require.NoError(t, err)
 			require.Len(t, builders, 0)
 		})
@@ -89,7 +95,7 @@ func TestAdminFlow(t *testing.T) {
 			require.NoError(t, err)
 		})
 		t.Run("get builders", func(t *testing.T) {
-			builders, err := dbService.GetActiveBuildersWithServiceCredentials(context.Background())
+			builders, err := dbService.GetActiveBuildersWithServiceCredentials(context.Background(), domain.ProductionNetwork)
 			require.NoError(t, err)
 			require.Len(t, builders, 1)
 			require.Equal(t, builders[0].Builder.Name, "test-builder")
