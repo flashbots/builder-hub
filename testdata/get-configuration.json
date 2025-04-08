@@ -19,10 +19,10 @@
         "builder_endpoint": "http://127.0.0.1:8645",
         "conn_per_peer": "50",
         "flashbots_orderflow_signing_address": "0x00",
-        "local_listen_addr": "127.0.0.1:3443",
+        "user_listen_addr": "127.0.0.1:3443",
         "orderflow_archive_endpoint": "https://orderflow-archive.flashbots.net/api",
-        "public_listen_addr": "0.0.0.0:5544",
-        "max_local_rps": 1000
+        "system_listen_addr": "0.0.0.0:5544",
+        "max_user_rps": 1000
     },
     "rbuilder": {
         "__version": "v0.1.6",
