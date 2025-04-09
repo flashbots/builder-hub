@@ -68,7 +68,8 @@ curl -v \
   --url http://localhost:8081/api/admin/v1/builders \
   --data '{
   "name": "test_builder",
-  "ip_address": "1.2.3.4"
+  "ip_address": "1.2.3.4",
+  "network": "production"
 }'
 
 # 3. Create (and enable) a new builder configuration
