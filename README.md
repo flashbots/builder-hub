@@ -151,7 +151,9 @@ Response: 200 OK
 
 `GET /api/l1-builder/v1/builders` (external, requests from builder via cvm-proxy)
 
-`GET /api/internal/l1-builder/v1/builders` (internal, no auth)
+`GET /api/internal/l1-builder/v1/builders` (internal, no auth, uses `production` network by default)
+
+`GET /api/internal/l1-builder/v2/network/{network}/builders` (internal, no auth, for specific peer network)
 
 Response: [testdata/get-builders.json](https://github.com/flashbots/builder-config-hub/blob/main/testdata/get-builders.json)
 
