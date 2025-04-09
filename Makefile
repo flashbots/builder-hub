@@ -89,7 +89,7 @@ db-dump: ## Dump the database contents to file 'database.dump'
 	@printf "Database dumped to file: $(GREEN)database.dump$(NC) ✅\n"
 
 .PHONY: dev-db-setup
-db-dev-setup: ## Create the basic database entries for testing and development
+dev-db-setup: ## Create the basic database entries for testing and development
 	@printf "$(GREEN)Create the allow-all measurements $(NC)\n"
 	curl --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
 
@@ -97,7 +97,7 @@ db-dev-setup: ## Create the basic database entries for testing and development
 	curl --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'
 
 	@printf "$(GREEN)Create the builder $(NC)\n"
-	curl --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4"}'
+	curl --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4", "network": "production"}'
 
 	@printf "$(GREEN)Create the builder configuration $(NC)\n"
 	curl --request POST --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder --data '{"dns_name": "foobar-v1.a.b.c","rbuilder": {"extra_data": "FooBar"}}'
