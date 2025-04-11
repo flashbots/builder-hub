@@ -25,3 +25,5 @@
 testdata/*-config.json
 testdata/*-secrets.json
 /database.dump
+
+docs/api-docs/admin-api/environments/

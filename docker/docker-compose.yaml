@@ -2,7 +2,7 @@ services:
   db:
     image: flashbots/builder-hub-db
     ports:
-      - 5432:5432
+      - 127.0.0.1:5432:5432
     environment:
       PGUSER: postgres
       POSTGRES_DB: postgres
@@ -24,10 +24,10 @@ services:
     links:
       - "db:database"
     ports:
-      - 8080:8080
-      - 8081:8081
-      - 8082:8082
-      - 8090:8090
+      - 127.0.0.1:8080:8080
+      - 127.0.0.1:8081:8081
+      - 127.0.0.1:8082:8082
+      - 127.0.0.1:8090:8090
     environment:
       MOCK_SECRETS: true
       POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
@@ -41,6 +41,6 @@ services:
     links:
       - "web:web"
     ports:
-      - 8888:8888
+      - 127.0.0.1:8888:8888
     environment:
       TARGET: "http://web:8080"
