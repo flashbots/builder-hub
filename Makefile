@@ -6,6 +6,7 @@ VERSION := $(shell git describe --tags --always --dirty="-dev")
 
 # A few colors
 RED:=\033[0;31m
+BLUE:=\033[0;34m
 GREEN:=\033[0;32m
 NC:=\033[0m
 
@@ -90,17 +91,17 @@ db-dump: ## Dump the database contents to file 'database.dump'
 
 .PHONY: dev-db-setup
 dev-db-setup: ## Create the basic database entries for testing and development
-	@printf "$(GREEN)Create the allow-all measurements $(NC)\n"
-	curl --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
+	@printf "$(BLUE)Create the allow-all measurements $(NC)\n"
+	curl -v --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
 
-	@printf "$(GREEN)Enable the measurements $(NC)\n"
-	curl --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'
+	@printf "$(BLUE)Enable the measurements $(NC)\n"
+	curl -v --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'
 
-	@printf "$(GREEN)Create the builder $(NC)\n"
-	curl --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4", "network": "production"}'
+	@printf "$(BLUE)Create the builder $(NC)\n"
+	curl -v --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4", "network": "production"}'
 
-	@printf "$(GREEN)Create the builder configuration $(NC)\n"
-	curl --request POST --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder --data '{"dns_name": "foobar-v1.a.b.c","rbuilder": {"extra_data": "FooBar"}}'
+	@printf "$(BLUE)Create the builder configuration $(NC)\n"
+	curl -v --request POST --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder --data '{"dns_name": "foobar-v1.a.b.c","rbuilder": {"extra_data": "FooBar"}}'
 
-	@printf "$(GREEN)Enable the builder $(NC)\n"
-	curl --request POST --url http://localhost:8081/api/admin/v1/builders/activation/test_builder --data '{"enabled": true}'
+	@printf "$(BLUE)Enable the builder $(NC)\n"
+	curl -v --request POST --url http://localhost:8081/api/admin/v1/builders/activation/test_builder --data '{"enabled": true}'

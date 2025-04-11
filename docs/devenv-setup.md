@@ -46,7 +46,6 @@ For initial setup, use the [Admin API](https://github.com/flashbots/builder-hub?
 ```bash
 # 1a. Create a new measurements entry (empty allowed measurements will allow all client measurements)
 curl -v \
-  --request POST \
   --url http://localhost:8081/api/admin/v1/measurements \
   --data '{
   "measurement_id": "test1",
@@ -64,7 +63,6 @@ curl -v \
 
 # 2. Create a new builder instance (with IP address 1.2.3.4, which is fixed in the mock-proxy)
 curl -v \
-  --request POST \
   --url http://localhost:8081/api/admin/v1/builders \
   --data '{
   "name": "test_builder",
@@ -74,7 +72,6 @@ curl -v \
 
 # 3. Create (and enable) a new builder configuration
 curl -v \
-  --request POST \
   --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder \
   --data '{
   "dns_name": "foobar-v1.a.b.c",
@@ -85,7 +82,6 @@ curl -v \
 
 # 4. Enable the new builder instance
 curl -v \
-  --request POST \
   --url http://localhost:8081/api/admin/v1/builders/activation/test_builder \
   --data '{
   "enabled": true
@@ -114,7 +110,6 @@ curl http://localhost:8888/api/l1-builder/v1/builders | jq
 
 # 3. Register credentials for 'rbuilder' service
 curl -v \
-  --request POST \
   --url http://localhost:8888/api/l1-builder/v1/register_credentials/rbuilder \
   --data '{
   "ecdsa_pubkey_address": "0x321f3426eEc20DE1910af1CD595c4DD83BEA0BA5"
