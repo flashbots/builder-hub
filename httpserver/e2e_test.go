@@ -239,13 +239,13 @@ func createBuilder(t *testing.T, s *Server, builderName, ip, network string) {
 	})
 
 	t.Run("CreateBuilderConfiguration", func(t *testing.T) {
-		builderConf := map[string]string{"test_key_1": builderName + "_test_value_1"}
+		builderConf := map[string]string{}
 		sc, _ := execRequestNoAuth(t, s.GetAdminRouter(), http.MethodPost, "/api/admin/v1/builders/configuration/"+builderName, builderConf, nil)
 		require.Equal(t, http.StatusOK, sc)
 	})
 	t.Run("SetSecrets", func(t *testing.T) {
-		sec := map[string]string{"test_secret_1": builderName + "_test_secret_value"}
-		sc, _ := execRequestNoAuth(t, s.GetAdminRouter(), http.MethodPost, "/api/admin/v1/builders/secrets/"+builderName, sec, nil)
+		rawJson := json.RawMessage(fmt.Sprintf(`{"test_key_1": "%s_test_value_1", "test_secret_1": "%s_test_secret_value"}`, builderName, builderName))
+		sc, _ := execRequestNoAuth(t, s.GetAdminRouter(), http.MethodPost, "/api/admin/v1/builders/secrets/"+builderName, rawJson, nil)
 		require.Equal(t, http.StatusOK, sc)
 	})
 
@@ -369,7 +369,7 @@ func execRequestAuth(t *testing.T, router http.Handler, method, url string, requ
 
 	if response != nil && rr.Code >= 200 && rr.Code < 300 {
 		err := json.Unmarshal(responseBody, response)
-		require.NoError(t, err)
+		require.NoErrorf(t, err, string(responseBody))
 	}
 	return rr.Code, responseBody
 }

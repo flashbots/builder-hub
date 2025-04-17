@@ -68,7 +68,7 @@ func (s *Service) SetSecretValues(builderName string, values json.RawMessage) er
 	if err != nil {
 		return err
 	}
-	
+
 	secretData[builderName] = values
 	newSecretString, err := json.Marshal(secretData)
 	if err != nil {

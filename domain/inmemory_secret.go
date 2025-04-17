@@ -20,7 +20,7 @@ func NewMockSecretService() *InmemorySecretService {
 func (mss *InmemorySecretService) GetSecretValues(builderName string) (json.RawMessage, error) {
 	mss.mu.RLock()
 	defer mss.mu.RUnlock()
-	return nil, nil
+	return mss.st[builderName], nil
 }
 
 func (mss *InmemorySecretService) SetSecretValues(builderName string, values json.RawMessage) error {
