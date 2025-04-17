@@ -23,8 +23,8 @@ type AdminBuilderService interface {
 }
 
 type AdminSecretService interface {
-	SetSecretValues(builderName string, values map[string]string) error
-	GetSecretValues(builderName string) (map[string]string, error)
+	SetSecretValues(builderName string, message json.RawMessage) error
+	application.SecretAccessor
 }
 
 type AdminHandler struct {
@@ -62,26 +62,20 @@ func (s *AdminHandler) GetActiveConfigForBuilder(w http.ResponseWriter, r *http.
 // logic gets more complicated here
 func (s *AdminHandler) GetFullConfigForBuilder(w http.ResponseWriter, r *http.Request) {
 	builderName := chi.URLParam(r, "builderName")
-	configBts, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
+	_, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
 	if err != nil {
 		s.log.Error("failed to get config with secrets", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	secrets, err := s.secretService.GetSecretValues(builderName)
+	secr, err := s.secretService.GetSecretValues(builderName)
 	if err != nil {
 		s.log.Error("failed to get secrets", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	bts, err := application.MergeConfigSecrets(configBts, secrets)
-	if err != nil {
-		s.log.Error("failed to merge config with secrets", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, err = w.Write(bts)
+	_, err = w.Write(secr)
 	if err != nil {
 		s.log.Error("failed to write response", "error", err)
 	}
@@ -234,14 +228,7 @@ func (s *AdminHandler) SetSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretValues, err := application.FlattenJSONFromBytes(body)
-	if err != nil {
-		s.log.Error("Failed to flatten JSON", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	err = s.secretService.SetSecretValues(builderName, secretValues)
+	err = s.secretService.SetSecretValues(builderName, body)
 	if err != nil {
 		s.log.Error("failed to set secret", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

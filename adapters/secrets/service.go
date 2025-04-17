@@ -3,6 +3,7 @@ package secrets
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -28,7 +29,9 @@ func NewService(secretName string) (*Service, error) {
 	return &Service{sm: svc, secretName: secretName}, nil
 }
 
-func (s *Service) GetSecretValues(builderName string) (map[string]string, error) {
+var ErrMissingSecret = errors.New("missing secret for builder")
+
+func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(s.secretName),
 	}
@@ -37,31 +40,21 @@ func (s *Service) GetSecretValues(builderName string) (map[string]string, error)
 	if err != nil {
 		return nil, err
 	}
-	secretData := make(map[string]string)
+	secretData := make(map[string]json.RawMessage)
 	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
 	if err != nil {
 		return nil, err
 	}
-	defaultStr := secretData["default"] // TODO: figured out that merging here is suboptimal and should be done in the application layer
-	defaultSecrets := make(map[string]string)
-	err = json.Unmarshal([]byte(defaultStr), &defaultSecrets)
-	if err != nil {
-		return nil, err
+
+	builderSecret, ok := secretData[builderName]
+	if !ok {
+		return nil, ErrMissingSecret
 	}
 
-	builderStr, ok := secretData[builderName]
-	if !ok {
-		return defaultSecrets, nil
-	}
-	builderSecrets := make(map[string]string)
-	err = json.Unmarshal([]byte(builderStr), &builderSecrets)
-	if err != nil {
-		return nil, err
-	}
-	return MergeSecrets(defaultSecrets, builderSecrets), nil
+	return builderSecret, nil
 }
 
-func (s *Service) SetSecretValues(builderName string, values map[string]string) error {
+func (s *Service) SetSecretValues(builderName string, values json.RawMessage) error {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(s.secretName),
 	}

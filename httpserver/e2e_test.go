@@ -123,7 +123,6 @@ func TestCreateMultipleNetworkBuilders(t *testing.T) {
 			}
 		}
 	})
-
 }
 
 func TestCreateMultipleMeasurements(t *testing.T) {

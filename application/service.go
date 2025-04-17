@@ -20,7 +20,7 @@ type BuilderDataAccessor interface {
 }
 
 type SecretAccessor interface {
-	GetSecretValues(builderName string) (map[string]string, error)
+	GetSecretValues(builderName string) (json.RawMessage, error)
 }
 
 type BuilderHub struct {
@@ -49,19 +49,15 @@ func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderN
 }
 
 func (b *BuilderHub) GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error) {
-	configOpaque, err := b.dataAccessor.GetActiveConfigForBuilder(ctx, builderName)
+	_, err := b.dataAccessor.GetActiveConfigForBuilder(ctx, builderName)
 	if err != nil {
 		return nil, fmt.Errorf("failing to fetch config for builder %s %w", builderName, err)
 	}
-	secrets, err := b.secretAccessor.GetSecretValues(builderName)
+	secr, err := b.secretAccessor.GetSecretValues(builderName)
 	if err != nil {
 		return nil, fmt.Errorf("failing to fetch secrets for builder %s %w", builderName, err)
 	}
-	res, err := MergeConfigSecrets(configOpaque, secrets)
-	if err != nil {
-		return nil, fmt.Errorf("failing to merge config and secrets %w", err)
-	}
-	return res, nil
+	return secr, nil
 }
 
 func (b *BuilderHub) VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error) {
