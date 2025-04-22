@@ -38,7 +38,8 @@
         "require_non_empty_blocklist": false,
         "top_bid_stream_api_key": "0x00",
         "top_bid_ws_basic_auth": "Zmxhc2hib3RzOmRvbnRwZWVrb25tZQ==",
-        "top_bid_ws_url": "ws://localhost:8546"
+        "top_bid_ws_url": "ws://localhost:8546",
+        "watchdog_timeout_sec": 145
     },
     "disk_encryption": {
         "key": "string"
