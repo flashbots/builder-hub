@@ -25,5 +25,7 @@
 testdata/*-config.json
 testdata/*-secrets.json
 /database.dump
+db.dockerfile
+
 
 docs/api-docs/admin-api/environments/
