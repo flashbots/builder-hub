@@ -221,6 +221,7 @@ func TestAuthInteractionFlow(t *testing.T) {
 		require.Equal(t, http.StatusOK, sc)
 		require.Equal(t, 1, len(resp))
 		require.Equal(t, builderName, resp[0].Name)
+		require.Equal(t, builderName+".builder.net", resp[0].DNSName)
 		require.Equal(t, "test-cert-no-validation", resp[0].ServiceCreds["rbuilder"].TLSCert)
 		require.Equal(t, "0x1234567890123456789012345678901234567890", resp[0].ServiceCreds["rbuilder"].ECDSAPubkey.String())
 	})
@@ -228,9 +229,11 @@ func TestAuthInteractionFlow(t *testing.T) {
 
 // createBuilder emulates admin flow to provision a builder
 func createBuilder(t *testing.T, s *Server, builderName, ip, network string) {
+	dnsName := builderName + ".builder.net"
 	builder := ports.Builder{
 		Name:      builderName,
 		IPAddress: ip,
+		DNSName:   dnsName,
 		Network:   network,
 	}
 	t.Run("CreateBuilder", func(t *testing.T) {
@@ -264,6 +267,7 @@ func createBuilder(t *testing.T, s *Server, builderName, ip, network string) {
 		for _, b := range resp {
 			if b.Name == builderName {
 				require.Equal(t, ip, b.IP)
+				require.Equal(t, dnsName, b.DNSName)
 				return
 			}
 		}

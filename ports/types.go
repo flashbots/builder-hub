@@ -23,6 +23,7 @@ var (
 
 type BuilderWithServiceCreds struct {
 	IP           string
+	DNSName      string
 	Name         string
 	ServiceCreds map[string]ServiceCred
 }
@@ -41,6 +42,7 @@ func (b BuilderWithServiceCreds) MarshalJSON() ([]byte, error) {
 	// Add the IP field
 	m["ip"] = b.IP
 	m["name"] = b.Name
+	m["dns_name"] = b.DNSName
 
 	// Add all services
 	for k, v := range b.ServiceCreds {
@@ -54,8 +56,9 @@ func (b BuilderWithServiceCreds) MarshalJSON() ([]byte, error) {
 func (b *BuilderWithServiceCreds) UnmarshalJSON(data []byte) error {
 	// Define a temporary struct to unmarshal known fields
 	type Alias struct {
-		IP   string `json:"ip"`
-		Name string `json:"name"`
+		IP      string `json:"ip"`
+		Name    string `json:"name"`
+		DNSName string `json:"dns_name"`
 	}
 
 	// Unmarshal known fields first
@@ -67,6 +70,7 @@ func (b *BuilderWithServiceCreds) UnmarshalJSON(data []byte) error {
 	// Copy known fields to the original struct
 	b.IP = alias.IP
 	b.Name = alias.Name
+	b.DNSName = alias.DNSName
 
 	// Unmarshal the remaining fields into a map
 	var rawMap map[string]json.RawMessage
@@ -77,6 +81,7 @@ func (b *BuilderWithServiceCreds) UnmarshalJSON(data []byte) error {
 	// Remove known fields from the map
 	delete(rawMap, "ip")
 	delete(rawMap, "name")
+	delete(rawMap, "dns_name")
 
 	// Initialize the ServiceCreds map
 	b.ServiceCreds = make(map[string]ServiceCred)
@@ -98,6 +103,8 @@ func fromDomainBuilderWithServices(builder domain.BuilderWithServices) BuilderWi
 
 	b.IP = builder.Builder.IPAddress.String()
 	b.Name = builder.Builder.Name
+	b.DNSName = builder.Builder.DNSName
+
 	b.ServiceCreds = make(map[string]ServiceCred)
 	for _, v := range builder.Services {
 		b.ServiceCreds[v.Service] = ServiceCred{
@@ -131,6 +138,7 @@ func toDomainMeasurement(measurement Measurement) domain.Measurement {
 
 type Builder struct {
 	Name      string `json:"name"`
+	DNSName   string `json:"dns_name"`
 	IPAddress string `json:"ip_address"`
 	Network   string `json:"network"`
 }
@@ -143,6 +151,7 @@ func toDomainBuilder(builder Builder, enabled bool) (domain.Builder, error) {
 
 	return domain.Builder{
 		Name:      builder.Name,
+		DNSName:   builder.DNSName,
 		IPAddress: ip,
 		IsActive:  enabled,
 		Network:   builder.Network,

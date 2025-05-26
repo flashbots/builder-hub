@@ -9,14 +9,6 @@ import (
 	"github.com/jackc/pgtype"
 )
 
-type ActiveBuilder struct {
-	BuilderID   int         `db:"builder_id"`
-	Name        string      `db:"name"`
-	IPAddress   pgtype.Inet `db:"ip_address"`
-	TLSPubKey   []byte      `db:"tls_pubkey"`
-	ECDSAPubKey []byte      `db:"ecdsa_pubkey"`
-}
-
 type Measurement struct {
 	ID              int             `db:"id"`
 	Name            string          `db:"name"`
@@ -41,13 +33,14 @@ func convertMeasurementToDomain(measurement Measurement) (*domain.Measurement, e
 }
 
 type Builder struct {
-	Name         string      `db:"name"`
-	IPAddress    pgtype.Inet `db:"ip_address"`
-	IsActive     bool        `db:"is_active"`
-	Network      string      `db:"network"`
-	CreatedAt    time.Time   `db:"created_at"`
-	UpdatedAt    time.Time   `db:"updated_at"`
-	DeprecatedAt *time.Time  `db:"deprecated_at"`
+	Name         string         `db:"name"`
+	IPAddress    pgtype.Inet    `db:"ip_address"`
+	IsActive     bool           `db:"is_active"`
+	Network      string         `db:"network"`
+	DNSNAme      sql.NullString `db:"dns_name"`
+	CreatedAt    time.Time      `db:"created_at"`
+	UpdatedAt    time.Time      `db:"updated_at"`
+	DeprecatedAt *time.Time     `db:"deprecated_at"`
 }
 
 func convertBuilderToDomain(builder Builder) (*domain.Builder, error) {
@@ -59,6 +52,7 @@ func convertBuilderToDomain(builder Builder) (*domain.Builder, error) {
 		IPAddress: builder.IPAddress.IPNet.IP,
 		IsActive:  builder.IsActive,
 		Network:   builder.Network,
+		DNSName:   builder.DNSNAme.String,
 	}, nil
 }
 
@@ -83,6 +77,7 @@ type BuilderConfig struct {
 type BuilderWithCredentials struct {
 	Name        string
 	IPAddress   pgtype.Inet
+	DNSName     sql.NullString
 	Credentials []ServiceCredential
 }
 type ServiceCredential struct {
@@ -98,6 +93,7 @@ func toDomainBuilderWithCredentials(builder BuilderWithCredentials) (*domain.Bui
 	s := domain.BuilderWithServices{
 		Builder: domain.Builder{
 			Name:      builder.Name,
+			DNSName:   builder.DNSName.String,
 			IPAddress: builder.IPAddress.IPNet.IP,
 			IsActive:  true,
 		},
