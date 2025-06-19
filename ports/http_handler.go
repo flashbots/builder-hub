@@ -277,22 +277,28 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 	switch service {
 	case "instance":
 		if sc.TLSCert == "" {
-			bhs.log.Error("TLS cert is required for instance service")
+			errMsg := "TLS certificate is required for instance service"
+			bhs.log.Warn(errMsg)
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(errMsg))
 			return
 		}
 		tlsCert = sc.TLSCert
 	case "orderflow_proxy", "rbuilder":
 		if sc.ECDSAPubkey == nil {
-			bhs.log.Error("ECDSA pubkey is required for service", "service", service)
+			errMsg := "ECDSA pubkey is required for service"
+			bhs.log.Warn(errMsg, "service", service)
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(errMsg))
 			return
 		}
 		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
 	default:
 		if sc.TLSCert == "" && sc.ECDSAPubkey == nil {
-			bhs.log.Error("No credentials provided")
+			errMsg := "No credentials provided"
+			bhs.log.Warn(errMsg)
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(errMsg))
 			return
 		}
 		tlsCert = sc.TLSCert
