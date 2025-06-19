@@ -124,12 +124,18 @@ Auth:
 
 Request:
 
-- [service: `orderflow_proxy`]:
-    - TLS cert + ECDSA pubkey address (for orderflow)
+- [service: `instance`]: TLS cert
 
     ```json
     {
     	"tls_cert": string (\n instead of newlines)
+    }
+    ```
+
+- [service: `orderflow_proxy`]: ECDSA pubkey address (for orderflow)
+
+    ```json
+    {
     	"ecdsa_pubkey_address": string
     }
     ```

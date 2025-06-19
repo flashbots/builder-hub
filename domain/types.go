@@ -41,6 +41,7 @@ type Builder struct {
 	IPAddress net.IP `json:"ip_address"`
 	IsActive  bool   `json:"is_active"`
 	Network   string `json:"network"`
+	DNSName   string `json:"dns_name"`
 }
 
 type BuilderWithServices struct {

@@ -153,6 +153,7 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
         SELECT 
             b.name,
             b.ip_address,
+            b.dns_name,
             scr.service,
             scr.tls_cert,
             scr.ecdsa_pubkey
@@ -177,9 +178,10 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
 		var builderName string
 		var service sql.NullString
 		var tlsCert sql.NullString
+		var dnsName sql.NullString
 		var ecdsaPubKey []byte
 
-		err := rows.Scan(&builderName, &ipAddress, &service, &tlsCert, &ecdsaPubKey)
+		err := rows.Scan(&builderName, &ipAddress, &dnsName, &service, &tlsCert, &ecdsaPubKey)
 		if err != nil {
 			return nil, err
 		}
@@ -189,6 +191,7 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
 			builder = &BuilderWithCredentials{
 				Name:      builderName,
 				IPAddress: ipAddress,
+				DNSName:   dnsName,
 			}
 			buildersMap[builderName] = builder
 		}
@@ -256,9 +259,9 @@ func (s *Service) AddBuilder(ctx context.Context, builder domain.Builder) error 
 		return err
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		INSERT INTO builders (name, ip_address, is_active, network)
-		VALUES ($1, $2, $3, $4)
-	`, builder.Name, bIP, builder.IsActive, builder.Network)
+		INSERT INTO builders (name, ip_address, is_active, network, dns_name)
+		VALUES ($1, $2, $3, $4, $5)
+	`, builder.Name, bIP, builder.IsActive, builder.Network, sql.NullString{String: builder.DNSName, Valid: builder.DNSName != ""})
 	return err
 }
 
