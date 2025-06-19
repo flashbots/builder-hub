@@ -280,7 +280,9 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 			errMsg := "TLS certificate is required for instance service"
 			bhs.log.Warn(errMsg)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(errMsg))
+			if _, err := w.Write([]byte(errMsg)); err != nil {
+				bhs.log.Error("failed to write response", "error", err)
+			}
 			return
 		}
 		tlsCert = sc.TLSCert
@@ -289,7 +291,9 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 			errMsg := "ECDSA pubkey is required for service"
 			bhs.log.Warn(errMsg, "service", service)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(errMsg))
+			if _, err := w.Write([]byte(errMsg)); err != nil {
+				bhs.log.Error("failed to write response", "error", err)
+			}
 			return
 		}
 		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
@@ -298,7 +302,9 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 			errMsg := "No credentials provided"
 			bhs.log.Warn(errMsg)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(errMsg))
+			if _, err := w.Write([]byte(errMsg)); err != nil {
+				bhs.log.Error("failed to write response", "error", err)
+			}
 			return
 		}
 		tlsCert = sc.TLSCert
