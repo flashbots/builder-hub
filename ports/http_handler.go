@@ -277,34 +277,19 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 	switch service {
 	case "instance":
 		if sc.TLSCert == "" {
-			errMsg := "TLS certificate is required for instance service"
-			bhs.log.Warn(errMsg)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write([]byte(errMsg)); err != nil {
-				bhs.log.Error("failed to write response", "error", err)
-			}
+			http.Error(w, "TLS cert is required for instance service", http.StatusBadRequest)
 			return
 		}
 		tlsCert = sc.TLSCert
 	case "orderflow_proxy", "rbuilder":
 		if sc.ECDSAPubkey == nil {
-			errMsg := "ECDSA pubkey is required for service"
-			bhs.log.Warn(errMsg, "service", service)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write([]byte(errMsg)); err != nil {
-				bhs.log.Error("failed to write response", "error", err)
-			}
+			http.Error(w, "ECDSA pubkey is required for service", http.StatusBadRequest)
 			return
 		}
 		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
 	default:
 		if sc.TLSCert == "" && sc.ECDSAPubkey == nil {
-			errMsg := "No credentials provided"
-			bhs.log.Warn(errMsg)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write([]byte(errMsg)); err != nil {
-				bhs.log.Error("failed to write response", "error", err)
-			}
+			http.Error(w, "No credentials provided", http.StatusBadRequest)
 			return
 		}
 		tlsCert = sc.TLSCert
