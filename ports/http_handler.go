@@ -269,13 +269,33 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if sc.TLSCert == "" && sc.ECDSAPubkey == nil {
-		bhs.log.Error("No credentials provided")
+
+	// Validate payload based on service type
+	var tlsCert string
+	var ecdsaPubkey []byte
+
+	switch service {
+	case "instance":
+		if sc.TLSCert == "" {
+			bhs.log.Error("TLS cert is required for instance service")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		tlsCert = sc.TLSCert
+	case "orderflow_proxy", "rbuilder":
+		if sc.ECDSAPubkey == nil {
+			bhs.log.Error("ECDSA pubkey is required for service", "service", service)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
+	default:
+		bhs.log.Error("Unknown service type", "service", service)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, sc.TLSCert, sc.ECDSAPubkey.Bytes(), measurementName, authData.AttestationType)
+	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, tlsCert, ecdsaPubkey, measurementName, authData.AttestationType)
 	if err != nil {
 		bhs.log.Error("Failed to register credentials", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
