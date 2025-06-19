@@ -207,7 +207,6 @@ func TestAuthInteractionFlow(t *testing.T) {
 	t.Run("RegisterCredentials", func(t *testing.T) {
 		addr := common.HexToAddress("0x1234567890123456789012345678901234567890")
 		sc := ports.ServiceCred{
-			TLSCert:     "test-cert-no-validation",
 			ECDSAPubkey: &addr,
 		}
 		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodPost, "/api/l1-builder/v1/register_credentials/rbuilder", sc, nil, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.0.1")
@@ -222,7 +221,7 @@ func TestAuthInteractionFlow(t *testing.T) {
 		require.Equal(t, 1, len(resp))
 		require.Equal(t, builderName, resp[0].Name)
 		require.Equal(t, builderName+".builder.net", resp[0].DNSName)
-		require.Equal(t, "test-cert-no-validation", resp[0].ServiceCreds["rbuilder"].TLSCert)
+		require.Equal(t, "", resp[0].ServiceCreds["rbuilder"].TLSCert)
 		require.Equal(t, "0x1234567890123456789012345678901234567890", resp[0].ServiceCreds["rbuilder"].ECDSAPubkey.String())
 	})
 }
