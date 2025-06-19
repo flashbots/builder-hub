@@ -290,9 +290,13 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		}
 		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
 	default:
-		bhs.log.Error("Unknown service type", "service", service)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		if sc.TLSCert == "" && sc.ECDSAPubkey == nil {
+			bhs.log.Error("No credentials provided")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		tlsCert = sc.TLSCert
+		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
 	}
 
 	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, tlsCert, ecdsaPubkey, measurementName, authData.AttestationType)
