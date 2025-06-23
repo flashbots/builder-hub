@@ -67,6 +67,7 @@ curl -v \
   --data '{
   "name": "test_builder",
   "ip_address": "1.2.3.4",
+  "dns_name": "foobar-v1.a.b.c",
   "network": "production"
 }'
 
@@ -74,7 +75,6 @@ curl -v \
 curl -v \
   --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder \
   --data '{
-  "dns_name": "foobar-v1.a.b.c",
   "rbuilder": {
     "extra_data": "FooBar"
   }
