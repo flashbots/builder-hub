@@ -1,6 +1,9 @@
 services:
   db:
     image: flashbots/builder-hub-db
+    build:
+      context: ../.
+      dockerfile: docker/database/Dockerfile
     ports:
       - 127.0.0.1:5432:5432
     environment:
@@ -17,6 +20,9 @@ services:
 
   web:
     image: flashbots/builder-hub
+    build:
+      context: ../.
+      dockerfile: docker/httpserver/Dockerfile
     depends_on:
       db:
         condition: service_healthy
