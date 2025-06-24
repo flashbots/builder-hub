@@ -71,16 +71,20 @@ curl -v \
   "network": "production"
 }'
 
-# 3. Create (and enable) a new builder configuration
+# 3. Create (and enable) a new empty builder configuration
 curl -v \
   --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder \
+  --data '{}'
+
+# 4. Actual configuration is stored in secrets. Put it there
+curl -v \
+  --url http://localhost:8081/api/admin/v1/builders/secrets/test_builder \
   --data '{
   "rbuilder": {
     "extra_data": "FooBar"
   }
 }'
-
-# 4. Enable the new builder instance
+# 5. Enable the new builder instance
 curl -v \
   --url http://localhost:8081/api/admin/v1/builders/activation/test_builder \
   --data '{
