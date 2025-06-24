@@ -270,29 +270,15 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Validate payload based on service type
-	var tlsCert string
-	var ecdsaPubkey []byte
+	if sc.ECDSAPubkey == nil && sc.TLSCert == "" {
+		http.Error(w, "No credentials provided", http.StatusBadRequest)
+		return
+	}
 
-	switch service {
-	case "instance":
-		if sc.TLSCert == "" {
-			http.Error(w, "TLS cert is required for instance service", http.StatusBadRequest)
-			return
-		}
-		tlsCert = sc.TLSCert
-	case "orderflow_proxy", "rbuilder":
-		if sc.ECDSAPubkey == nil {
-			http.Error(w, "ECDSA pubkey is required for service", http.StatusBadRequest)
-			return
-		}
-		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
-	default:
-		if sc.TLSCert == "" && sc.ECDSAPubkey == nil {
-			http.Error(w, "No credentials provided", http.StatusBadRequest)
-			return
-		}
-		tlsCert = sc.TLSCert
+	tlsCert := sc.TLSCert
+
+	var ecdsaPubkey []byte
+	if sc.ECDSAPubkey != nil {
 		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
 	}
 

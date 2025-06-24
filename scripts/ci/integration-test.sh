@@ -16,7 +16,7 @@ printf 'GET http://localhost:8888/\nHTTP 404' | hurl --retry 60 > /dev/null;
 
 # Run the tests
 echo "Running integration tests..."
-hurl --test scripts/ci/setup.hurl
+hurl --test scripts/ci/e2e-test.hurl
 echo "Integration tests completed successfully."
 
 # Stop and remove the Docker containers
