@@ -39,7 +39,9 @@ go run cmd/httpserver/main.go
 
 ### Using Docker
 
-See instructions on using Docker to run the full stack at [`docs/devenv-setup.md`](./docs/devenv-setup.md)
+- See instructions on using Docker to run the full stack at [`docs/devenv-setup.md`](./docs/devenv-setup.md)
+- Also check out the [`docker-compose.yaml`](../docker/docker-compose.yaml) file, which sets up the BuilderHub, a mock proxy, and a Postgres database.
+- Finally, there's an e2e api spec test suite you can run: [`./scripts/ci/integration-test.sh`](./scripts/ci/integration-test.sh)
 
 ### Example requests
 

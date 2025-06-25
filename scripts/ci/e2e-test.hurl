@@ -37,8 +37,14 @@ POST http://localhost:8081/api/admin/v1/builders
 }
 HTTP 200
 
-# [Admin API] Create (and enable) a new builder configuration
+# [Admin API] Create an empty builder configuration
 POST http://localhost:8081/api/admin/v1/builders/configuration/test_builder
+{
+}
+HTTP 200
+
+# [Admin API] Create the actual builder configuration which is stored in secrets
+POST http://localhost:8081/api/admin/v1/builders/secrets/test_builder
 {
   "rbuilder": {
     "extra_data": "FooBar"
@@ -67,16 +73,15 @@ HTTP 200
 jsonpath "$.[0].ip" == "1.2.3.4"
 jsonpath "$.[0].name" == "test_builder"
 
-# [Builder API] Verify that the builder can get it's configuration (NOT WORKING, TODO)
-#GET http://localhost:8888/api/l1-builder/v1/configuration
-#HTTP 200
-#[Asserts]
-#jsonpath "$.[0].dns_name" == "foobar-v1.a.b.c"
-#jsonpath "$.[0].rbuilder.extra_data" == "FooBar"
-
 #
 # BUILDER APIs (via proxy)
 #
+# [Builder API] Get own configuration
+GET http://localhost:8888/api/l1-builder/v1/configuration
+HTTP 200
+[Asserts]
+jsonpath "$.rbuilder.extra_data" == "FooBar"
+
 # [Builder API] Get the list of peers
 GET http://localhost:8888/api/l1-builder/v1/builders
 HTTP 200
