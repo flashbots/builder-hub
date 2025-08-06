@@ -11,11 +11,11 @@ import (
 )
 
 type Service struct {
-	sm         *secretsmanager.SecretsManager
-	secretName string
+	sm           *secretsmanager.SecretsManager
+	secretPrefix string
 }
 
-func NewService(secretName string) (*Service, error) {
+func NewService(secretPrefix string) (*Service, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("us-east-2"),
 	})
@@ -26,14 +26,18 @@ func NewService(secretName string) (*Service, error) {
 	// Create a Secrets Manager client
 	svc := secretsmanager.New(sess)
 
-	return &Service{sm: svc, secretName: secretName}, nil
+	return &Service{sm: svc, secretPrefix: secretPrefix}, nil
 }
 
 var ErrMissingSecret = errors.New("missing secret for builder")
 
+func (s *Service) secretName(builderName string) string {
+	return s.secretPrefix + "_" + builderName
+}
+
 func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
 	input := &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(s.secretName),
+		SecretId: aws.String(s.secretName(builderName)),
 	}
 
 	result, err := s.sm.GetSecretValue(input)
@@ -56,7 +60,7 @@ func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
 
 func (s *Service) SetSecretValues(builderName string, values json.RawMessage) error {
 	input := &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(s.secretName),
+		SecretId: aws.String(s.secretName(builderName)),
 	}
 
 	result, err := s.sm.GetSecretValue(input)
@@ -76,7 +80,7 @@ func (s *Service) SetSecretValues(builderName string, values json.RawMessage) er
 	}
 
 	sv := &secretsmanager.PutSecretValueInput{
-		SecretId:     aws.String(s.secretName),
+		SecretId:     aws.String(s.secretName(builderName)),
 		SecretString: aws.String(string(newSecretString)),
 	}
 	_, err = s.sm.PutSecretValue(sv)
