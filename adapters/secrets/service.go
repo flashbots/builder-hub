@@ -33,7 +33,7 @@ func NewService(secretPrefix string) (*Service, error) {
 var ErrMissingSecret = errors.New("missing secret for builder")
 
 func (s *Service) secretName(builderName string) string {
-	return s.secretPrefix + "_" + builderName
+	return s.secretPrefix + "/" + builderName
 }
 
 func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
