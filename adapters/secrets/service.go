@@ -6,16 +6,17 @@ import (
 	"errors"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
 
 type Service struct {
-	sm         *secretsmanager.SecretsManager
-	secretName string
+	sm           *secretsmanager.SecretsManager
+	secretPrefix string
 }
 
-func NewService(secretName string) (*Service, error) {
+func NewService(secretPrefix string) (*Service, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("us-east-2"),
 	})
@@ -26,18 +27,27 @@ func NewService(secretName string) (*Service, error) {
 	// Create a Secrets Manager client
 	svc := secretsmanager.New(sess)
 
-	return &Service{sm: svc, secretName: secretName}, nil
+	return &Service{sm: svc, secretPrefix: secretPrefix}, nil
 }
 
 var ErrMissingSecret = errors.New("missing secret for builder")
 
+func (s *Service) secretName(builderName string) string {
+	return s.secretPrefix + "/" + builderName
+}
+
 func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
 	input := &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(s.secretName),
+		SecretId: aws.String(s.secretName(builderName)),
 	}
 
 	result, err := s.sm.GetSecretValue(input)
 	if err != nil {
+		// If the secret doesn't exist, return empty JSON for new builders
+		var awsErr awserr.Error
+		if errors.As(err, &awsErr) && awsErr.Code() == secretsmanager.ErrCodeResourceNotFoundException {
+			return json.RawMessage("{}"), nil
+		}
 		return nil, err
 	}
 	secretData := make(map[string]json.RawMessage)
@@ -55,15 +65,37 @@ func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
 }
 
 func (s *Service) SetSecretValues(builderName string, values json.RawMessage) error {
+	secretName := s.secretName(builderName)
 	input := &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(s.secretName),
+		SecretId: aws.String(secretName),
 	}
 
 	result, err := s.sm.GetSecretValue(input)
+	var secretData map[string]json.RawMessage
+
 	if err != nil {
+		// If the secret doesn't exist, create it
+		var awsErr awserr.Error
+		if errors.As(err, &awsErr) && awsErr.Code() == secretsmanager.ErrCodeResourceNotFoundException {
+			// Create a new secret with the builder's values
+			secretData = map[string]json.RawMessage{builderName: values}
+			newSecretString, marshalErr := json.Marshal(secretData)
+			if marshalErr != nil {
+				return marshalErr
+			}
+
+			createInput := &secretsmanager.CreateSecretInput{
+				Name:         aws.String(secretName),
+				SecretString: aws.String(string(newSecretString)),
+			}
+			_, createErr := s.sm.CreateSecret(createInput)
+			return createErr
+		}
 		return err
 	}
-	secretData := make(map[string]json.RawMessage)
+
+	// Secret exists, update it
+	secretData = make(map[string]json.RawMessage)
 	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
 	if err != nil {
 		return err
@@ -76,7 +108,7 @@ func (s *Service) SetSecretValues(builderName string, values json.RawMessage) er
 	}
 
 	sv := &secretsmanager.PutSecretValueInput{
-		SecretId:     aws.String(s.secretName),
+		SecretId:     aws.String(secretName),
 		SecretString: aws.String(string(newSecretString)),
 	}
 	_, err = s.sm.PutSecretValue(sv)

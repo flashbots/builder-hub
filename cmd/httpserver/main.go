@@ -85,10 +85,10 @@ var flags = []cli.Flag{
 		EnvVars: []string{"POSTGRES_DSN"},
 	},
 	&cli.StringFlag{
-		Name:    "secret-name",
+		Name:    "secret-prefix",
 		Value:   "",
 		Usage:   "AWS Secret name",
-		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME"},
+		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME", "AWS_BUILDER_CONFIGS_SECRET_PREFIX"},
 	},
 	&cli.BoolFlag{
 		Name:    "mock-secrets",
@@ -156,7 +156,7 @@ func runCli(cCtx *cli.Context) error {
 		log.Info("using mock secrets storage")
 		sm = domain.NewMockSecretService()
 	} else {
-		sm, err = secrets.NewService(cCtx.String("secret-name"))
+		sm, err = secrets.NewService(cCtx.String("secret-prefix"))
 		if err != nil {
 			log.Error("failed to create secrets manager", "err", err)
 			return err
