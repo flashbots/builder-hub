@@ -22,6 +22,33 @@ BuilderHub has these responsibilities:
 ## Getting started
 
 
+### Admin authentication
+
+The Admin API (port 8081) requires HTTP Basic Auth. Configure via env vars or flags:
+
+- `ADMIN_BASIC_USER` (default: `admin`)
+- `ADMIN_BASIC_PASSWORD_BCRYPT` (bcrypt hash of the password; required)
+
+Generate a bcrypt hash (example using htpasswd):
+
+```bash
+htpasswd -nbBC 12 admin 'secret' | cut -d: -f2
+```
+
+Run with:
+
+```bash
+export ADMIN_BASIC_USER=admin
+export ADMIN_BASIC_PASSWORD_BCRYPT='$2y$12$...'
+go run cmd/httpserver/main.go
+```
+
+Use Basic Auth when calling admin endpoints, e.g.:
+
+```bash
+curl -u admin:secret http://localhost:8081/api/admin/v1/measurements
+```
+
 ### Manual setup
 
 **Start the database and the server:**

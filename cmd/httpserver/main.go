@@ -73,6 +73,18 @@ var flags = []cli.Flag{
 		Usage:   "enable pprof debug endpoint",
 		EnvVars: []string{"PPROF"},
 	},
+	&cli.StringFlag{
+		Name:    "admin-basic-user",
+		Value:   "admin",
+		Usage:   "username for admin Basic Auth",
+		EnvVars: []string{"ADMIN_BASIC_USER"},
+	},
+	&cli.StringFlag{
+		Name:    "admin-basic-password-bcrypt",
+		Value:   "",
+		Usage:   "bcrypt hash of admin password (required to enable admin API)",
+		EnvVars: []string{"ADMIN_BASIC_PASSWORD_BCRYPT"},
+	},
 	&cli.Int64Flag{
 		Name:  "drain-seconds",
 		Value: 15,
@@ -124,6 +136,8 @@ func runCli(cCtx *cli.Context) error {
 	enablePprof := cCtx.Bool("pprof")
 	drainDuration := time.Duration(cCtx.Int64("drain-seconds")) * time.Second
 	mockSecretsStorage := cCtx.Bool("mock-secrets")
+	adminBasicUser := cCtx.String("admin-basic-user")
+	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
 
 	logTags := map[string]string{
 		"version": common.Version,
@@ -174,6 +188,9 @@ func runCli(cCtx *cli.Context) error {
 		InternalAddr: internalAddr,
 		Log:          log,
 		EnablePprof:  enablePprof,
+
+		AdminBasicUser:      adminBasicUser,
+		AdminPasswordBcrypt: adminPasswordBcrypt,
 
 		DrainDuration:            drainDuration,
 		GracefulShutdownDuration: 30 * time.Second,

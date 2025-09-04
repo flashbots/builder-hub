@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 	"go.uber.org/atomic"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type HTTPServerConfig struct {
@@ -27,6 +28,10 @@ type HTTPServerConfig struct {
 	GracefulShutdownDuration time.Duration
 	ReadTimeout              time.Duration
 	WriteTimeout             time.Duration
+
+	// Admin API auth
+	AdminBasicUser      string
+	AdminPasswordBcrypt string
 }
 
 type Server struct {
@@ -113,6 +118,9 @@ func (srv *Server) GetAdminRouter() http.Handler {
 	mux.Use(middleware.Recoverer)
 	mux.Use(metrics.Middleware)
 
+	// Require Basic Auth for all admin routes
+	mux.Use(srv.basicAuthMiddleware())
+
 	mux.Get("/api/admin/v1/builders/configuration/{builderName}/active", srv.adminHandler.GetActiveConfigForBuilder)
 	mux.Get("/api/admin/v1/builders/configuration/{builderName}/full", srv.adminHandler.GetFullConfigForBuilder)
 	mux.Post("/api/admin/v1/measurements", srv.adminHandler.AddMeasurement)
@@ -137,6 +145,46 @@ func (srv *Server) GetInternalRouter() http.Handler {
 	mux.Get("/api/internal/l1-builder/v2/network/{network}/builders", srv.appHandler.GetActiveBuildersNoAuthNetworked)
 
 	return mux
+}
+
+// basicAuthMiddleware enforces HTTP Basic Auth on admin routes.
+// Username must match cfg.AdminBasicUser and password must match cfg.AdminPasswordBcrypt (bcrypt hash).
+func (srv *Server) basicAuthMiddleware() func(http.Handler) http.Handler {
+	requiredUser := srv.cfg.AdminBasicUser
+	bcryptHash := srv.cfg.AdminPasswordBcrypt
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// If no hash configured, deny access (secure-by-default)
+			if bcryptHash == "" {
+				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			u, p, ok := r.BasicAuth()
+			if !ok {
+				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			if requiredUser != "" && u != requiredUser {
+				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			// Compare password to bcrypt hash
+			if err := bcrypt.CompareHashAndPassword([]byte(bcryptHash), []byte(p)); err != nil {
+				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func (srv *Server) _stringFromFile(fn string) (string, error) {
