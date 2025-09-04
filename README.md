@@ -51,7 +51,7 @@ curl -u admin:secret http://localhost:8081/api/admin/v1/measurements
 
 Local development only: you can disable Admin API auth with `--disable-admin-auth` or `DISABLE_ADMIN_AUTH=1`. This is unsafe; never use in production.
 
-For development/testing, you may also allow empty measurements with `--enable-empty-measurements` or `ENABLE_EMPTY_MEASUREMENTS=1`. In production, keep this disabled and specify at least one expected measurement.
+For development/testing, you may also allow empty measurements with `--allow-empty-measurements` or `ALLOW_EMPTY_MEASUREMENTS=1`. In production, keep this disabled and specify at least one expected measurement.
 
 ### Manual setup
 

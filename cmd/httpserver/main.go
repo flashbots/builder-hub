@@ -114,9 +114,9 @@ var flags = []cli.Flag{
 		EnvVars: []string{"MOCK_SECRETS"},
 	},
 	&cli.BoolFlag{
-		Name:    "enable-empty-measurements",
+		Name:    "allow-empty-measurements",
 		Usage:   "allow empty measurements in AddMeasurement (local development/testing only)",
-		EnvVars: []string{"ENABLE_EMPTY_MEASUREMENTS"},
+		EnvVars: []string{"ALLOW_EMPTY_MEASUREMENTS"},
 	},
 }
 
@@ -146,7 +146,7 @@ func runCli(cCtx *cli.Context) error {
 	enablePprof := cCtx.Bool("pprof")
 	drainDuration := time.Duration(cCtx.Int64("drain-seconds")) * time.Second
 	mockSecretsStorage := cCtx.Bool("mock-secrets")
-	enableEmptyMeasurements := cCtx.Bool("enable-empty-measurements")
+	enableEmptyMeasurements := cCtx.Bool("allow-empty-measurements")
 	adminBasicUser := cCtx.String("admin-basic-user")
 	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
 	disableAdminAuth := cCtx.Bool("disable-admin-auth")
