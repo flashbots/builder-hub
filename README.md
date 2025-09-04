@@ -32,7 +32,7 @@ The Admin API (port 8081) requires HTTP Basic Auth. Configure via env vars or fl
 Generate a bcrypt hash (example using htpasswd):
 
 ```bash
-htpasswd -nbBC 12 admin 'secret' | cut -d: -f2
+htpasswd -nbBC 10 "" 'secret' | cut -d: -f2
 ```
 
 Run with:

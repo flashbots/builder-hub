@@ -66,3 +66,29 @@ func Test_AdminAuth_AllowsCorrectCreds(t *testing.T) {
 	h.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 }
+
+func Test_PasswordHash(t *testing.T) {
+	// Given a password string, ensure a bcrypt (htpasswd-style) hash validates.
+	password := "secret"
+	htpasswdHash := "$2y$10$Q3mgTfng5mWUlEkLaOA4du0mBIKKYblTcWMqbqehsJM96xF8YV4XC" // create with: htpasswd -nbBC 10 "" 'secret' | cut -d: -f2
+
+	// Generate a bcrypt hash (htpasswd uses bcrypt too). Cost can vary; default is fine for test.
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	require.NoError(t, err)
+
+	hash2, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	require.NoError(t, err)
+	require.NotEqual(t, hash, hash2, "bcrypt hashes with same input should differ due to random salt")
+
+	// Correct password must match
+	err = bcrypt.CompareHashAndPassword(hash, []byte(password))
+	require.NoError(t, err)
+
+	// Wrong password must fail
+	err = bcrypt.CompareHashAndPassword(hash, []byte("wrong"))
+	require.Error(t, err)
+
+	// Hash from htpasswd works
+	err = bcrypt.CompareHashAndPassword([]byte(htpasswdHash), []byte(password))
+	require.NoError(t, err)
+}
