@@ -161,30 +161,26 @@ func (srv *Server) basicAuthMiddleware() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			// If no hash configured, deny access (secure-by-default)
-			if bcryptHash == "" {
+
+			deny := func() {
 				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				return
 			}
 
 			u, p, ok := r.BasicAuth()
 			if !ok {
-				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				deny()
 				return
 			}
 
-			if requiredUser != "" && u != requiredUser {
-				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			if u != requiredUser {
+				deny()
 				return
 			}
 
 			// Compare password to bcrypt hash
 			if err := bcrypt.CompareHashAndPassword([]byte(bcryptHash), []byte(p)); err != nil {
-				w.Header().Set("WWW-Authenticate", "Basic realm=admin")
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				deny()
 				return
 			}
 

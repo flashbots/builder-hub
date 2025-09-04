@@ -38,6 +38,24 @@ build: ## Build the HTTP server
 
 ##@ Test & Development
 
+.PHONY: dev-postgres-up
+dev-postgres-up: ## Start the PostgreSQL database for development
+	docker run -d --name postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres postgres
+	for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
+
+.PHONY: dev-postgres-down
+dev-postgres-down: ## Stop the PostgreSQL database for development
+	docker rm -f postgres-test
+
+.PHONY: dev-docker-compose-up
+dev-docker-compose-up: ## Start Docker compose
+	docker compose -f docker/docker-compose.yaml build
+	docker compose -f docker/docker-compose.yaml up -d
+
+.PHONY: dev-docker-compose-down
+dev-docker-compose-down: ## Stop Docker compose
+	docker compose -f docker/docker-compose.yaml down
+
 .PHONY: lt
 lt: lint test ## Run linters and tests (always do this!)
 
@@ -50,11 +68,11 @@ fmt: ## Format the code (use this often)
 
 .PHONY: test
 test: ## Run tests
-	go test ./...
-
-.PHONY: test-race
-test-race: ## Run tests with race detector
 	go test -race ./...
+
+.PHONY: test-with-db
+test-with-db: ## Run tests including live database tests
+	RUN_DB_TESTS=1 go test -race ./...
 
 .PHONY: lint
 lint: ## Run linters

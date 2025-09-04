@@ -38,8 +38,8 @@ jobs:
       - name: Run migrations
         run: for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
 
-      - name: Run unit tests and generate the coverage report
-        run: RUN_DB_TESTS=1 make test-race
+      - name: Run unit tests
+        run: make test-with-db
 
   lint:
     name: Lint
