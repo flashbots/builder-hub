@@ -308,6 +308,49 @@ func createMeasurement(t *testing.T, s *Server, measurement ports.Measurement) {
 	})
 }
 
+func Test_AddMeasurement_EmptyRejected(t *testing.T) {
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
+	s, _, _ := createServer(t)
+	empty := ports.Measurement{
+		Name:            "empty-measurement",
+		AttestationType: "test",
+		Measurements:    map[string]domain.SingleMeasurement{},
+	}
+	status, _ := execRequestNoAuth(t, s.GetAdminRouter(), http.MethodPost, "/api/admin/v1/measurements", empty, nil)
+	require.Equal(t, http.StatusBadRequest, status)
+}
+
+func Test_AddMeasurement_EmptyAllowedWithFlag(t *testing.T) {
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
+	// Create a server where empty measurements are allowed
+	dbService := createDbService(t)
+	mss := domain.NewMockSecretService()
+	bhs := application.NewBuilderHub(dbService, mss)
+	bhh := ports.NewBuilderHubHandler(bhs, getTestLogger())
+	ah := ports.NewAdminHandler(dbService, mss, getTestLogger(), true)
+	s, err := NewHTTPServer(&HTTPServerConfig{
+		DrainDuration:     latency,
+		ListenAddr:        listenAddr,
+		InternalAddr:      internalAddr,
+		AdminAddr:         adminAddr,
+		AdminAuthDisabled: true,
+		Log:               getTestLogger(),
+	}, bhh, ah)
+	require.NoError(t, err)
+
+	empty := ports.Measurement{
+		Name:            "empty-allowed",
+		AttestationType: "test",
+		Measurements:    map[string]domain.SingleMeasurement{},
+	}
+	status, _ := execRequestNoAuth(t, s.GetAdminRouter(), http.MethodPost, "/api/admin/v1/measurements", empty, nil)
+	require.Equal(t, http.StatusOK, status)
+}
+
 func createDbService(t *testing.T) *database.Service {
 	t.Helper()
 	dbService, err := database.NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
@@ -328,7 +371,7 @@ func createServer(t *testing.T) (*Server, *database.Service, *domain.InmemorySec
 	bhs := application.NewBuilderHub(dbService, mss)
 	bhh := ports.NewBuilderHubHandler(bhs, getTestLogger())
 	_ = bhh
-	ah := ports.NewAdminHandler(dbService, mss, getTestLogger())
+	ah := ports.NewAdminHandler(dbService, mss, getTestLogger(), false)
 	_ = ah
 	s, err := NewHTTPServer(&HTTPServerConfig{
 		DrainDuration:     latency,

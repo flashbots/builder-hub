@@ -113,6 +113,11 @@ var flags = []cli.Flag{
 		Usage:   "Use inmemory secrets service for testing",
 		EnvVars: []string{"MOCK_SECRETS"},
 	},
+	&cli.BoolFlag{
+		Name:    "enable-empty-measurements",
+		Usage:   "allow empty measurements in AddMeasurement (local development/testing only)",
+		EnvVars: []string{"ENABLE_EMPTY_MEASUREMENTS"},
+	},
 }
 
 func main() {
@@ -141,6 +146,7 @@ func runCli(cCtx *cli.Context) error {
 	enablePprof := cCtx.Bool("pprof")
 	drainDuration := time.Duration(cCtx.Int64("drain-seconds")) * time.Second
 	mockSecretsStorage := cCtx.Bool("mock-secrets")
+	enableEmptyMeasurements := cCtx.Bool("enable-empty-measurements")
 	adminBasicUser := cCtx.String("admin-basic-user")
 	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
 	disableAdminAuth := cCtx.Bool("disable-admin-auth")
@@ -189,7 +195,7 @@ func runCli(cCtx *cli.Context) error {
 	builderHub := application.NewBuilderHub(db, sm)
 	builderHandler := ports.NewBuilderHubHandler(builderHub, log)
 
-	adminHandler := ports.NewAdminHandler(db, sm, log)
+	adminHandler := ports.NewAdminHandler(db, sm, log, enableEmptyMeasurements)
 	cfg := &httpserver.HTTPServerConfig{
 		ListenAddr:   listenAddr,
 		MetricsAddr:  metricsAddr,

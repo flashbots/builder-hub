@@ -41,7 +41,7 @@ func Test_Handlers_Healthcheck_Drain_Undrain(t *testing.T) {
 		InternalAddr:  internalAddr,
 		AdminAddr:     adminAddr,
 		Log:           getTestLogger(),
-	}, ports.NewBuilderHubHandler(nil, getTestLogger()), ports.NewAdminHandler(nil, nil, getTestLogger()))
+	}, ports.NewBuilderHubHandler(nil, getTestLogger()), ports.NewAdminHandler(nil, nil, getTestLogger(), false))
 	require.NoError(t, err)
 
 	{ // Check health

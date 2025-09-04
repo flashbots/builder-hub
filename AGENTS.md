@@ -18,6 +18,8 @@
 
 ## Coding Style & Conventions
 - Go formatting is enforced: run `make fmt` (gofmt, gofumpt, gci, go mod tidy).
+- Always run `make fmt` and `make lint`.
+- If touching `httpserver/e2e_test.go`, always test with database enabled: `make dev-postgres-restart test-with-db dev-postgres-stop`.
 - Package names: lower-case; exported symbols: PascalCase; locals: camelCase.
 - Keep files focused; group handlers in `httpserver`, business logic in `application/domain`.
 - Imports: standard → third-party → local (enforced by gci).

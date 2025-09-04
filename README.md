@@ -51,26 +51,27 @@ curl -u admin:secret http://localhost:8081/api/admin/v1/measurements
 
 Local development only: you can disable Admin API auth with `--disable-admin-auth` or `DISABLE_ADMIN_AUTH=1`. This is unsafe; never use in production.
 
+For development/testing, you may also allow empty measurements with `--enable-empty-measurements` or `ENABLE_EMPTY_MEASUREMENTS=1`. In production, keep this disabled and specify at least one expected measurement.
+
 ### Manual setup
 
-**Start the database and the server:**
+See [`docs/devenv-setup.md`](./docs/devenv-setup.md) for more information on building and running BuilderHub locally with docker compose.
+
+### Testing
+
+Run the test suite with database tests included:
 
 ```bash
-# Start a Postgres database container
-docker run -d --name postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres postgres
+# Run tests with real database integration
+make dev-postgres-start
+make test-with-db
 
-# Apply the DB migrations
-for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
-
-# Start the server
-go run cmd/httpserver/main.go
+# Run e2e integration tests, using the docker-compose setup
+make integration-tests
 ```
 
-### Using Docker
-
-- See instructions on using Docker to run the full stack at [`docs/devenv-setup.md`](./docs/devenv-setup.md)
-- Also check out the [`docker-compose.yaml`](../docker/docker-compose.yaml) file, which sets up the BuilderHub, a mock proxy, and a Postgres database.
-- Finally, there's an e2e api spec test suite you can run: [`./scripts/ci/integration-test.sh`](./scripts/ci/integration-test.sh)
+The [integration tests](./scripts/ci/integration-test.sh) use the above mentioned [docker-compose setup](./docker/docker-compose.yaml)
+and [Hurl](https://hurl.dev) for API request automation (see the [code here](./scripts/ci/e2e-test.hurl)).
 
 ### Example requests
 
@@ -84,34 +85,25 @@ curl localhost:8080/api/l1-builder/v1/configuration
 curl -X POST localhost:8080/api/l1-builder/v1/register_credentials/rbuilder
 ```
 
-### Testing
-
-Run test suite with database tests included:
-
-```bash
-RUN_DB_TESTS=1 make test
-```
-
 ---
 
 ## Contributing
 
 **Install dev dependencies**
 
-```bash
-go install mvdan.cc/gofumpt@v0.4.0
-go install honnef.co/go/tools/cmd/staticcheck@v0.4.2
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
-go install go.uber.org/nilaway/cmd/nilaway@v0.0.0-20240821220108-c91e71c080b7
-go install github.com/daixiang0/gci@v0.11.2
-```
+Use the same development dependencies as Github CI via [checks.yml](https://github.com/flashbots/builder-hub/blob/required-measurements/.github/workflows/checks.yml#L44-L77)
 
 **Lint, test, format**
 
 ```bash
-make lint
-make test
+# Quick and easy linting and testing without database
+make lt  # stands for "make lint and test"
+
+# Run things manually
 make fmt
+make lint
+make dev-postgres-start
+make test-with-db
 ```
 
 ---
@@ -230,18 +222,7 @@ Payload
 }
 ```
 
-Note that only the measurements given are expected, and any non-present will be ignored.
-
-To allow _any_ measurement, use an empty measurements field:
-`"measurements": {}`.
-
-```json
-{
-    "measurement_id": "test-blanket-allow",
-    "attestation_type": "azure-tdx",
-    "measurements": {}
-}
-```
+Note that only the measurements given are expected, and any non-present will be ignored. The `measurements` object must contain at least one entry.
 
 ### Enable/disable measurements
 
