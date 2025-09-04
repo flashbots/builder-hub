@@ -171,7 +171,7 @@ func runCli(cCtx *cli.Context) error {
 		log.Error("failed to create database", "err", err)
 		return err
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck
 
 	var sm ports.AdminSecretService
 

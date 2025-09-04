@@ -25,9 +25,9 @@ func NewDatabaseService(dsn string) (*Service, error) {
 		return nil, err
 	}
 
-	db.DB.SetMaxOpenConns(50)
-	db.DB.SetMaxIdleConns(10)
-	db.DB.SetConnMaxIdleTime(0)
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxIdleTime(0)
 
 	dbService := &Service{DB: db} //nolint:exhaustruct
 	return dbService, err
@@ -117,9 +117,9 @@ func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName
 	}
 
 	_, err = tx.Exec(`
-        INSERT INTO service_credential_registrations 
+        INSERT INTO service_credential_registrations
         (builder_name, service, tls_cert, ecdsa_pubkey, is_active, measurement_id)
-        VALUES ($1, $2, $3, $4, true, 
+        VALUES ($1, $2, $3, $4, true,
             (SELECT id FROM measurements_whitelist WHERE name = $5 AND attestation_type = $6)
         )
     `, builderName, service, nullableTLSCert, ecdsaPubKey, measurementName, attestationType)
@@ -150,26 +150,26 @@ func (s *Service) GetActiveConfigForBuilder(ctx context.Context, builderName str
 
 func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, network string) ([]domain.BuilderWithServices, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-        SELECT 
+        SELECT
             b.name,
             b.ip_address,
             b.dns_name,
             scr.service,
             scr.tls_cert,
             scr.ecdsa_pubkey
-        FROM 
+        FROM
             builders b
-        LEFT JOIN 
+        LEFT JOIN
             service_credential_registrations scr ON b.name = scr.builder_name
-        WHERE 
+        WHERE
             b.is_active = true AND (scr.is_active = true OR scr.is_active IS NULL) AND b.network = $1
-        ORDER BY 
+        ORDER BY
             b.name, scr.service
     `, network)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	buildersMap := make(map[string]*BuilderWithCredentials)
 
@@ -227,9 +227,9 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
 func (s *Service) LogEvent(ctx context.Context, eventName, builderName, name string) error {
 	// Insert new event log entry with a subquery to fetch the measurement_id
 	_, err := s.DB.ExecContext(ctx, `
-        INSERT INTO event_log 
+        INSERT INTO event_log
         (event_name, builder_name, measurement_id)
-        VALUES ($1, $2, 
+        VALUES ($1, $2,
             (SELECT id FROM measurements_whitelist WHERE name = $3)
         )
     `, eventName, builderName, name)

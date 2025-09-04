@@ -28,13 +28,13 @@ func protectedHandler(t *testing.T, user, bcryptHash string) (http.Handler, *Ser
 }
 
 func protectedHandlerDisabled(t *testing.T, disabled bool) http.Handler {
-    t.Helper()
-    srv := &Server{cfg: &HTTPServerConfig{AdminAuthDisabled: disabled}, log: testLogger()}
-    next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusOK)
-        _, _ = fmt.Fprint(w, "ok")
-    })
-    return srv.basicAuthMiddleware()(next)
+	t.Helper()
+	srv := &Server{cfg: &HTTPServerConfig{AdminAuthDisabled: disabled}, log: testLogger()}
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, "ok")
+	})
+	return srv.basicAuthMiddleware()(next)
 }
 
 func Test_AdminAuth_DeniesWithoutHash(t *testing.T) {
@@ -78,17 +78,17 @@ func Test_AdminAuth_AllowsCorrectCreds(t *testing.T) {
 }
 
 func Test_AdminAuth_Disabled_AllowsWithoutCreds(t *testing.T) {
-    h := protectedHandlerDisabled(t, true)
-    req := httptest.NewRequest(http.MethodGet, "/", nil)
-    rr := httptest.NewRecorder()
-    h.ServeHTTP(rr, req)
-    require.Equal(t, http.StatusOK, rr.Code)
+	h := protectedHandlerDisabled(t, true)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
 
-    // When not disabled, should be unauthorized without hash/creds
-    h2 := protectedHandlerDisabled(t, false)
-    rr2 := httptest.NewRecorder()
-    h2.ServeHTTP(rr2, req)
-    require.Equal(t, http.StatusUnauthorized, rr2.Code)
+	// When not disabled, should be unauthorized without hash/creds
+	h2 := protectedHandlerDisabled(t, false)
+	rr2 := httptest.NewRecorder()
+	h2.ServeHTTP(rr2, req)
+	require.Equal(t, http.StatusUnauthorized, rr2.Code)
 }
 
 func Test_PasswordHash(t *testing.T) {
