@@ -28,13 +28,14 @@ type AdminSecretService interface {
 }
 
 type AdminHandler struct {
-	builderService AdminBuilderService
-	secretService  AdminSecretService
-	log            *httplog.Logger
+	builderService         AdminBuilderService
+	secretService          AdminSecretService
+	log                    *httplog.Logger
+	allowEmptyMeasurements bool
 }
 
-func NewAdminHandler(service AdminBuilderService, secretService AdminSecretService, log *httplog.Logger) *AdminHandler {
-	return &AdminHandler{builderService: service, secretService: secretService, log: log}
+func NewAdminHandler(service AdminBuilderService, secretService AdminSecretService, log *httplog.Logger, allowEmptyMeasurements bool) *AdminHandler {
+	return &AdminHandler{builderService: service, secretService: secretService, log: log, allowEmptyMeasurements: allowEmptyMeasurements}
 }
 
 func (s *AdminHandler) GetActiveConfigForBuilder(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +95,13 @@ func (s *AdminHandler) AddMeasurement(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.log.Error("Failed to unmarshal request body", "err", err)
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Disallow empty measurements map unless explicitly allowed
+	if len(measurement.Measurements) == 0 && !s.allowEmptyMeasurements {
+		s.log.Error("measurements field must not be empty")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("measurements must contain at least one entry"))
 		return
 	}
 	err = s.builderService.AddMeasurement(r.Context(), toDomainMeasurement(measurement), false)

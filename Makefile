@@ -38,22 +38,26 @@ build: ## Build the HTTP server
 
 ##@ Test & Development
 
-.PHONY: dev-postgres-up
-dev-postgres-up: ## Start the PostgreSQL database for development
+.PHONY: dev-postgres-start
+dev-postgres-start: ## Start the PostgreSQL database for development
 	docker run -d --name postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres postgres
-	for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
+	sleep 3
+	for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $$file; done
 
-.PHONY: dev-postgres-down
-dev-postgres-down: ## Stop the PostgreSQL database for development
+.PHONY: dev-postgres-stop
+dev-postgres-stop: ## Stop the PostgreSQL database for development
 	docker rm -f postgres-test
 
-.PHONY: dev-docker-compose-up
-dev-docker-compose-up: ## Start Docker compose
+.PHONY: dev-postgres-restart
+dev-postgres-restart: dev-postgres-stop dev-postgres-start ## Restart the PostgreSQL database for development
+
+.PHONY: dev-docker-compose-start
+dev-docker-compose-start: ## Start Docker compose
 	docker compose -f docker/docker-compose.yaml build
 	docker compose -f docker/docker-compose.yaml up -d
 
-.PHONY: dev-docker-compose-down
-dev-docker-compose-down: ## Stop Docker compose
+.PHONY: dev-docker-compose-stop
+dev-docker-compose-stop: ## Stop Docker compose
 	docker compose -f docker/docker-compose.yaml down
 
 .PHONY: lt
@@ -73,6 +77,10 @@ test: ## Run tests
 .PHONY: test-with-db
 test-with-db: ## Run tests including live database tests
 	RUN_DB_TESTS=1 go test -race ./...
+
+.PHONY: integration-tests
+integration-tests: ## Run integration tests
+	./scripts/ci/integration-test.sh
 
 .PHONY: lint
 lint: ## Run linters
