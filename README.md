@@ -49,6 +49,8 @@ Use Basic Auth when calling admin endpoints, e.g.:
 curl -u admin:secret http://localhost:8081/api/admin/v1/measurements
 ```
 
+Local development only: you can disable Admin API auth with `--disable-admin-auth` or `DISABLE_ADMIN_AUTH=1`. This is unsafe; never use in production.
+
 ### Manual setup
 
 **Start the database and the server:**

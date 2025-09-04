@@ -32,6 +32,7 @@ type HTTPServerConfig struct {
 	// Admin API auth
 	AdminBasicUser      string
 	AdminPasswordBcrypt string
+	AdminAuthDisabled   bool
 }
 
 type Server struct {
@@ -155,6 +156,11 @@ func (srv *Server) basicAuthMiddleware() func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if srv.cfg.AdminAuthDisabled {
+				// pass-through when disabled (for local development only)
+				next.ServeHTTP(w, r)
+				return
+			}
 			// If no hash configured, deny access (secure-by-default)
 			if bcryptHash == "" {
 				w.Header().Set("WWW-Authenticate", "Basic realm=admin")

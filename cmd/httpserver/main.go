@@ -82,8 +82,13 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "admin-basic-password-bcrypt",
 		Value:   "",
-		Usage:   "bcrypt hash of admin password (required to enable admin API)",
+		Usage:   "bcrypt hash of admin password (required to enable admin API, generate with `htpasswd -nbBC 12 admin 'secret' | cut -d: -f2`)",
 		EnvVars: []string{"ADMIN_BASIC_PASSWORD_BCRYPT"},
+	},
+	&cli.BoolFlag{
+		Name:    "disable-admin-auth",
+		Usage:   "disable admin Basic Auth (local development only)",
+		EnvVars: []string{"DISABLE_ADMIN_AUTH"},
 	},
 	&cli.Int64Flag{
 		Name:  "drain-seconds",
@@ -138,6 +143,7 @@ func runCli(cCtx *cli.Context) error {
 	mockSecretsStorage := cCtx.Bool("mock-secrets")
 	adminBasicUser := cCtx.String("admin-basic-user")
 	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
+	disableAdminAuth := cCtx.Bool("disable-admin-auth")
 
 	logTags := map[string]string{
 		"version": common.Version,
@@ -156,6 +162,9 @@ func runCli(cCtx *cli.Context) error {
 	})
 
 	log.With("version", common.Version).Info("starting builder-hub")
+	if disableAdminAuth {
+		log.Warn("ADMIN AUTH DISABLED! DO NOT USE IN PRODUCTION", "flag", "--disable-admin-auth")
+	}
 
 	db, err := database.NewDatabaseService(cCtx.String("postgres-dsn"))
 	if err != nil {
@@ -191,6 +200,7 @@ func runCli(cCtx *cli.Context) error {
 
 		AdminBasicUser:      adminBasicUser,
 		AdminPasswordBcrypt: adminPasswordBcrypt,
+		AdminAuthDisabled:   disableAdminAuth,
 
 		DrainDuration:            drainDuration,
 		GracefulShutdownDuration: 30 * time.Second,
