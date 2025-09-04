@@ -331,11 +331,12 @@ func createServer(t *testing.T) (*Server, *database.Service, *domain.InmemorySec
 	ah := ports.NewAdminHandler(dbService, mss, getTestLogger())
 	_ = ah
 	s, err := NewHTTPServer(&HTTPServerConfig{
-		DrainDuration: latency,
-		ListenAddr:    listenAddr,
-		InternalAddr:  internalAddr,
-		AdminAddr:     adminAddr,
-		Log:           getTestLogger(),
+		DrainDuration:     latency,
+		ListenAddr:        listenAddr,
+		InternalAddr:      internalAddr,
+		AdminAddr:         adminAddr,
+		AdminAuthDisabled: true,
+		Log:               getTestLogger(),
 	}, bhh, ah)
 	require.NoError(t, err)
 	return s, dbService, mss
