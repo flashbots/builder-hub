@@ -4,6 +4,11 @@
 
 VERSION := $(shell git describe --tags --always --dirty="-dev")
 
+# Admin API auth for curl examples (set ADMIN_AUTH="admin:secret" or similar. can be empty when server is run with --disable-admin-auth)
+ADMIN_AUTH ?=
+CURL ?= curl -v
+CURL_AUTH := $(if $(ADMIN_AUTH),-u $(ADMIN_AUTH),)
+
 # A few colors
 RED:=\033[0;31m
 BLUE:=\033[0;34m
@@ -33,6 +38,24 @@ build: ## Build the HTTP server
 
 ##@ Test & Development
 
+.PHONY: dev-postgres-up
+dev-postgres-up: ## Start the PostgreSQL database for development
+	docker run -d --name postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres postgres
+	for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
+
+.PHONY: dev-postgres-down
+dev-postgres-down: ## Stop the PostgreSQL database for development
+	docker rm -f postgres-test
+
+.PHONY: dev-docker-compose-up
+dev-docker-compose-up: ## Start Docker compose
+	docker compose -f docker/docker-compose.yaml build
+	docker compose -f docker/docker-compose.yaml up -d
+
+.PHONY: dev-docker-compose-down
+dev-docker-compose-down: ## Stop Docker compose
+	docker compose -f docker/docker-compose.yaml down
+
 .PHONY: lt
 lt: lint test ## Run linters and tests (always do this!)
 
@@ -45,11 +68,11 @@ fmt: ## Format the code (use this often)
 
 .PHONY: test
 test: ## Run tests
-	go test ./...
-
-.PHONY: test-race
-test-race: ## Run tests with race detector
 	go test -race ./...
+
+.PHONY: test-with-db
+test-with-db: ## Run tests including live database tests
+	RUN_DB_TESTS=1 go test -race ./...
 
 .PHONY: lint
 lint: ## Run linters
@@ -92,16 +115,16 @@ db-dump: ## Dump the database contents to file 'database.dump'
 .PHONY: dev-db-setup
 dev-db-setup: ## Create the basic database entries for testing and development
 	@printf "$(BLUE)Create the allow-all measurements $(NC)\n"
-	curl -v --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
+	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
 
 	@printf "$(BLUE)Enable the measurements $(NC)\n"
-	curl -v --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'
+	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'
 
 	@printf "$(BLUE)Create the builder $(NC)\n"
-	curl -v --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4", "network": "production"}'
+	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/builders --data '{"name": "test_builder","ip_address": "1.2.3.4", "network": "production"}'
 
 	@printf "$(BLUE)Create the builder configuration $(NC)\n"
-	curl -v --request POST --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder --data '{"dns_name": "foobar-v1.a.b.c","rbuilder": {"extra_data": "FooBar"}}'
+	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/builders/configuration/test_builder --data '{"dns_name": "foobar-v1.a.b.c","rbuilder": {"extra_data": "FooBar"}}'
 
 	@printf "$(BLUE)Enable the builder $(NC)\n"
-	curl -v --request POST --url http://localhost:8081/api/admin/v1/builders/activation/test_builder --data '{"enabled": true}'
+	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/builders/activation/test_builder --data '{"enabled": true}'

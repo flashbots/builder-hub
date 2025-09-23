@@ -73,6 +73,23 @@ var flags = []cli.Flag{
 		Usage:   "enable pprof debug endpoint",
 		EnvVars: []string{"PPROF"},
 	},
+	&cli.StringFlag{
+		Name:    "admin-basic-user",
+		Value:   "admin",
+		Usage:   "username for admin Basic Auth",
+		EnvVars: []string{"ADMIN_BASIC_USER"},
+	},
+	&cli.StringFlag{
+		Name:    "admin-basic-password-bcrypt",
+		Value:   "",
+		Usage:   "bcrypt hash of admin password (required to enable admin API, generate with `htpasswd -nbBC 12 admin 'secret' | cut -d: -f2`)",
+		EnvVars: []string{"ADMIN_BASIC_PASSWORD_BCRYPT"},
+	},
+	&cli.BoolFlag{
+		Name:    "disable-admin-auth",
+		Usage:   "disable admin Basic Auth (local development only)",
+		EnvVars: []string{"DISABLE_ADMIN_AUTH"},
+	},
 	&cli.Int64Flag{
 		Name:  "drain-seconds",
 		Value: 15,
@@ -124,6 +141,9 @@ func runCli(cCtx *cli.Context) error {
 	enablePprof := cCtx.Bool("pprof")
 	drainDuration := time.Duration(cCtx.Int64("drain-seconds")) * time.Second
 	mockSecretsStorage := cCtx.Bool("mock-secrets")
+	adminBasicUser := cCtx.String("admin-basic-user")
+	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
+	disableAdminAuth := cCtx.Bool("disable-admin-auth")
 
 	logTags := map[string]string{
 		"version": common.Version,
@@ -142,13 +162,16 @@ func runCli(cCtx *cli.Context) error {
 	})
 
 	log.With("version", common.Version).Info("starting builder-hub")
+	if disableAdminAuth {
+		log.Warn("ADMIN AUTH DISABLED! DO NOT USE IN PRODUCTION", "flag", "--disable-admin-auth")
+	}
 
 	db, err := database.NewDatabaseService(cCtx.String("postgres-dsn"))
 	if err != nil {
 		log.Error("failed to create database", "err", err)
 		return err
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck
 
 	var sm ports.AdminSecretService
 
@@ -174,6 +197,10 @@ func runCli(cCtx *cli.Context) error {
 		InternalAddr: internalAddr,
 		Log:          log,
 		EnablePprof:  enablePprof,
+
+		AdminBasicUser:      adminBasicUser,
+		AdminPasswordBcrypt: adminPasswordBcrypt,
+		AdminAuthDisabled:   disableAdminAuth,
 
 		DrainDuration:            drainDuration,
 		GracefulShutdownDuration: 30 * time.Second,
