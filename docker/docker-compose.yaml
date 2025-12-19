@@ -18,7 +18,7 @@ services:
       start_period: 2s
       timeout: 5s
 
-  web:
+  builder-hub-api:
     image: flashbots/builder-hub
     build:
       context: ../.
@@ -46,8 +46,8 @@ services:
   proxy:
     image: flashbots/builder-hub-mock-proxy
     links:
-      - "web:web"
+      - "builder-hub-api:builder-hub-api"
     ports:
       - 127.0.0.1:8888:8888
     environment:
-      TARGET: "http://web:8080"
+      TARGET: "http://builder-hub-api:8080"
