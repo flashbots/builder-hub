@@ -2,6 +2,7 @@
 
 [![Goreport status](https://goreportcard.com/badge/github.com/flashbots/builder-hub)](https://goreportcard.com/report/github.com/flashbots/builder-hub)
 [![Test status](https://github.com/flashbots/builder-hub/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/flashbots/builder-hub/actions?query=workflow%3A%22Checks%22)
+[![Docker hub](https://badgen.net/docker/size/flashbots/builder-hub?icon=docker&label=image)](https://hub.docker.com/r/flashbots/builder-hub/tags)
 
 BuilderHub is the central data source for BuilderNet builder registration and configuration.
 
