@@ -30,11 +30,11 @@ type AdminSecretService interface {
 type AdminHandler struct {
 	builderService AdminBuilderService
 	secretService  AdminSecretService
-	log            *httplog.Logger
+	handler
 }
 
 func NewAdminHandler(service AdminBuilderService, secretService AdminSecretService, log *httplog.Logger) *AdminHandler {
-	return &AdminHandler{builderService: service, secretService: secretService, log: log}
+	return &AdminHandler{builderService: service, secretService: secretService, handler: handler{log: log}}
 }
 
 func (s *AdminHandler) GetActiveConfigForBuilder(w http.ResponseWriter, r *http.Request) {
@@ -92,8 +92,7 @@ func (s *AdminHandler) AddMeasurement(w http.ResponseWriter, r *http.Request) {
 	measurement := Measurement{}
 	err = json.Unmarshal(body, &measurement)
 	if err != nil {
-		s.log.Error("Failed to unmarshal request body", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		s.BadRequest(w, r, "failed to unmarshal request body", err)
 		return
 	}
 	err = s.builderService.AddMeasurement(r.Context(), toDomainMeasurement(measurement), false)
@@ -115,20 +114,16 @@ func (s *AdminHandler) AddBuilder(w http.ResponseWriter, r *http.Request) {
 	builder := Builder{}
 	err = json.Unmarshal(body, &builder)
 	if err != nil {
-		s.log.Error("Failed to unmarshal request body", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		s.BadRequest(w, r, "failed to unmarshal request body", err)
 		return
 	}
 	if builder.Network == "" {
-		s.log.Error("network field is required")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("network field is required"))
+		s.BadRequest(w, r, "network field is required")
 		return
 	}
 	dBuilder, err := toDomainBuilder(builder, false)
 	if err != nil {
-		s.log.Error("Failed to convert builder to domain builder", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		s.BadRequest(w, r, "failed to convert builder to domain builder", err)
 		return
 	}
 	err = s.builderService.AddBuilder(r.Context(), dBuilder)
@@ -148,8 +143,7 @@ func (s *AdminHandler) ChangeActiveStatusForBuilder(w http.ResponseWriter, r *ht
 	activationRequest := ActivationRequest{}
 	err := json.NewDecoder(r.Body).Decode(&activationRequest)
 	if err != nil {
-		s.log.Error("failed to decode request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
+		s.BadRequest(w, r, "failed to decode request body", err)
 		return
 	}
 
@@ -158,8 +152,7 @@ func (s *AdminHandler) ChangeActiveStatusForBuilder(w http.ResponseWriter, r *ht
 	if activationRequest.Enabled {
 		_, err = s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
 		if errors.Is(err, domain.ErrNotFound) {
-			s.log.Warn("no active config for builder found", "error", err)
-			w.WriteHeader(http.StatusNotFound)
+			s.BadRequest(w, r, "active config not found: please set config for the builder first")
 			return
 		}
 		if err != nil {
@@ -182,8 +175,7 @@ func (s *AdminHandler) ChangeActiveStatusForMeasurement(w http.ResponseWriter, r
 	activationRequest := ActivationRequest{}
 	err := json.NewDecoder(r.Body).Decode(&activationRequest)
 	if err != nil {
-		s.log.Error("failed to decode request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
+		s.BadRequest(w, r, "failed to decode request body", err)
 		return
 	}
 	err = s.builderService.ChangeActiveStatusForMeasurement(r.Context(), measurementName, activationRequest.Enabled)
@@ -204,8 +196,7 @@ func (s *AdminHandler) AddBuilderConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if !json.Valid(body) {
-		s.log.Error("Invalid json", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		s.BadRequest(w, r, "invalid json")
 		return
 	}
 
