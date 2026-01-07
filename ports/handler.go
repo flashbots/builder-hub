@@ -17,16 +17,18 @@ type badRequestParams struct {
 }
 
 func (h *handler) BadRequest(w http.ResponseWriter, r *http.Request, msg string, errs ...error) {
-	var err error
-	if errs != nil {
-		err = errs[0]
-		h.log.Warn(msg, "err", err)
-	} else {
-		h.log.Warn(msg)
-	}
 	w.WriteHeader(http.StatusBadRequest)
+	if errs != nil {
+		err := errs[0]
+		h.log.Warn(msg, "err", err)
+		_ = json.NewEncoder(w).Encode(&badRequestParams{
+			Message: msg,
+			Error:   err.Error(),
+		})
+		return
+	}
+	h.log.Warn(msg)
 	_ = json.NewEncoder(w).Encode(&badRequestParams{
 		Message: msg,
-		Error:   err.Error(),
 	})
 }
