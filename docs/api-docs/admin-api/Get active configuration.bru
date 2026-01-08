@@ -1,0 +1,11 @@
+meta {
+  name: Get active configuration
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:8081/api/admin/v1/builders/configuration/{{builder}}/active
+  body: none
+  auth: none
+}

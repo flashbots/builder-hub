@@ -25,11 +25,11 @@ type BuilderHubService interface {
 }
 type BuilderHubHandler struct {
 	builderHubService BuilderHubService
-	log               *httplog.Logger
+	handler
 }
 
 func NewBuilderHubHandler(builderHubService BuilderHubService, log *httplog.Logger) *BuilderHubHandler {
-	return &BuilderHubHandler{builderHubService: builderHubService, log: log}
+	return &BuilderHubHandler{builderHubService: builderHubService, handler: handler{log: log}}
 }
 
 type AuthData struct {
@@ -84,7 +84,7 @@ func (bhs *BuilderHubHandler) GetAllowedMeasurements(w http.ResponseWriter, r *h
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	var pMeasurements []Measurement
+	pMeasurements := make([]Measurement, 0, len(measurements))
 	for _, m := range measurements {
 		pMeasurements = append(pMeasurements, fromDomainMeasurement(m))
 	}
@@ -126,7 +126,7 @@ func (bhs *BuilderHubHandler) GetActiveBuilders(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	var pBuilders []BuilderWithServiceCreds
+	pBuilders := make([]BuilderWithServiceCreds, 0, len(builders))
 	for _, b := range builders {
 		pBuilders = append(pBuilders, fromDomainBuilderWithServices(b))
 	}
@@ -149,7 +149,7 @@ func (bhs *BuilderHubHandler) GetActiveBuildersNoAuth(w http.ResponseWriter, r *
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	var pBuilders []BuilderWithServiceCreds
+	pBuilders := make([]BuilderWithServiceCreds, 0, len(builders))
 	for _, b := range builders {
 		pBuilders = append(pBuilders, fromDomainBuilderWithServices(b))
 	}
@@ -168,8 +168,7 @@ func (bhs *BuilderHubHandler) GetActiveBuildersNoAuth(w http.ResponseWriter, r *
 func (bhs *BuilderHubHandler) GetActiveBuildersNoAuthNetworked(w http.ResponseWriter, r *http.Request) {
 	network := chi.URLParam(r, "network")
 	if network == "" {
-		bhs.log.Warn("network is empty")
-		w.WriteHeader(http.StatusBadRequest)
+		bhs.BadRequest(w, r, "network is empty")
 		return
 	}
 
@@ -179,7 +178,7 @@ func (bhs *BuilderHubHandler) GetActiveBuildersNoAuthNetworked(w http.ResponseWr
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	var pBuilders []BuilderWithServiceCreds
+	pBuilders := make([]BuilderWithServiceCreds, 0, len(builders))
 	for _, b := range builders {
 		pBuilders = append(pBuilders, fromDomainBuilderWithServices(b))
 	}
@@ -250,8 +249,7 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 	service := chi.URLParam(r, "service")
 	// TODO: validate service
 	if service == "" {
-		bhs.log.Warn("service is empty")
-		w.WriteHeader(http.StatusBadRequest)
+		bhs.BadRequest(w, r, "service is empty")
 		return
 	}
 
@@ -265,13 +263,12 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 	sc := ServiceCred{}
 	err = json.Unmarshal(body, &sc)
 	if err != nil {
-		bhs.log.Error("Failed to unmarshal request body", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		bhs.BadRequest(w, r, "failed to unmarshal request body", err)
 		return
 	}
 
 	if sc.ECDSAPubkey == nil && sc.TLSCert == "" {
-		http.Error(w, "No credentials provided", http.StatusBadRequest)
+		bhs.BadRequest(w, r, "no credentials provided")
 		return
 	}
 
