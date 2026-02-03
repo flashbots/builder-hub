@@ -2,6 +2,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"net"
 
@@ -24,8 +25,52 @@ type Measurement struct {
 	Measurement     map[string]SingleMeasurement
 }
 
+// SingleMeasurement represents a single measurement with one or more expected values.
+// When multiple values are provided, any matching value is accepted (OR semantics).
 type SingleMeasurement struct {
-	Expected string `json:"expected"`
+	Expected []string
+}
+
+// UnmarshalJSON implements custom unmarshaling to support both:
+// - {"expected": "value"} (backwards compatible single string)
+// - {"expected": ["value1", "value2"]} (new list format)
+func (s *SingleMeasurement) UnmarshalJSON(data []byte) error {
+	// Try to unmarshal as object with expected field
+	var raw struct {
+		Expected json.RawMessage `json:"expected"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Try to unmarshal expected as a string first (backwards compatibility)
+	var singleValue string
+	if err := json.Unmarshal(raw.Expected, &singleValue); err == nil {
+		s.Expected = []string{singleValue}
+		return nil
+	}
+
+	// Try to unmarshal expected as an array of strings
+	var multiValue []string
+	if err := json.Unmarshal(raw.Expected, &multiValue); err != nil {
+		return err
+	}
+	s.Expected = multiValue
+	return nil
+}
+
+// MarshalJSON implements custom marshaling to output:
+// - {"expected": "value"} when there's exactly one value (backwards compatible)
+// - {"expected": ["value1", "value2"]} when there are multiple values
+func (s SingleMeasurement) MarshalJSON() ([]byte, error) {
+	if len(s.Expected) == 1 {
+		return json.Marshal(struct {
+			Expected string `json:"expected"`
+		}{Expected: s.Expected[0]})
+	}
+	return json.Marshal(struct {
+		Expected []string `json:"expected"`
+	}{Expected: s.Expected})
 }
 
 func NewMeasurement(name, attestationType string, measurements map[string]SingleMeasurement) *Measurement {

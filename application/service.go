@@ -87,12 +87,27 @@ func validateMeasurement(measurement map[string]string, measurementTemplate []do
 	return "", domain.ErrNotFound
 }
 
-// validates that all fields from measurementTemplate are the same in measurement
+// validates that all fields from measurementTemplate are the same in measurement.
+// For each field, the measurement value must match at least one of the expected values (OR semantics).
 func checkMeasurement(measurement map[string]string, measurementTemplate domain.Measurement) bool {
 	for k, v := range measurementTemplate.Measurement {
-		if val, ok := measurement[k]; !ok || val != v.Expected {
+		val, ok := measurement[k]
+		if !ok {
+			return false
+		}
+		if !matchesAnyExpected(val, v.Expected) {
 			return false
 		}
 	}
 	return true
+}
+
+// matchesAnyExpected returns true if the value matches any of the expected values.
+func matchesAnyExpected(value string, expected []string) bool {
+	for _, exp := range expected {
+		if value == exp {
+			return true
+		}
+	}
+	return false
 }
