@@ -50,10 +50,10 @@ func TestCreateMultipleNetworkBuilders(t *testing.T) {
 		AttestationType: "test-attestation-type-1",
 		Measurements: map[string]domain.SingleMeasurement{
 			"8": {
-				Expected: []string{"0000000000000000000000000000000000000000000000000000000000000000"},
+				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
 			},
 			"11": {
-				Expected: []string{"efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"},
+				Expected: "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7",
 			},
 		},
 	}
@@ -136,10 +136,10 @@ func TestCreateMultipleMeasurements(t *testing.T) {
 		AttestationType: "test-attestation-type-1",
 		Measurements: map[string]domain.SingleMeasurement{
 			"8": {
-				Expected: []string{"0000000000000000000000000000000000000000000000000000000000000000"},
+				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
 			},
 			"11": {
-				Expected: []string{"efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"},
+				Expected: "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7",
 			},
 		},
 	})
@@ -148,10 +148,10 @@ func TestCreateMultipleMeasurements(t *testing.T) {
 		AttestationType: "test-attestation-type-2",
 		Measurements: map[string]domain.SingleMeasurement{
 			"8": {
-				Expected: []string{"0000000000000000000000000000000000000000000000000000000000000000"},
+				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
 			},
 			"11": {
-				Expected: []string{"efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f8"},
+				Expected: "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f8",
 			},
 		},
 	})
@@ -172,10 +172,10 @@ func TestAuthInteractionFlow(t *testing.T) {
 		AttestationType: "test-attestation-type-1",
 		Measurements: map[string]domain.SingleMeasurement{
 			"8": {
-				Expected: []string{"0000000000000000000000000000000000000000000000000000000000000000"},
+				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
 			},
 			"11": {
-				Expected: []string{"efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"},
+				Expected: "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7",
 			},
 		},
 	}

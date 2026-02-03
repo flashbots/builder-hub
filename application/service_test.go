@@ -12,8 +12,8 @@ func TestCheckMeasurement_SingleExpectedValue(t *testing.T) {
 		Name:            "test",
 		AttestationType: "azure-tdx",
 		Measurement: map[string]domain.SingleMeasurement{
-			"8":  {Expected: []string{"0000"}},
-			"11": {Expected: []string{"aaaa"}},
+			"8":  {Expected: "0000"},
+			"11": {Expected: "aaaa"},
 		},
 	}
 
@@ -55,8 +55,8 @@ func TestCheckMeasurement_MultipleExpectedValues(t *testing.T) {
 		Name:            "test",
 		AttestationType: "azure-tdx",
 		Measurement: map[string]domain.SingleMeasurement{
-			"8":  {Expected: []string{"0000", "1111", "2222"}},
-			"11": {Expected: []string{"aaaa", "bbbb"}},
+			"8":  {ExpectedAny: []string{"0000", "1111", "2222"}},
+			"11": {ExpectedAny: []string{"aaaa", "bbbb"}},
 		},
 	}
 
@@ -107,16 +107,16 @@ func TestValidateMeasurement(t *testing.T) {
 			Name:            "template-1",
 			AttestationType: "azure-tdx",
 			Measurement: map[string]domain.SingleMeasurement{
-				"8":  {Expected: []string{"0000"}},
-				"11": {Expected: []string{"aaaa", "bbbb"}},
+				"8":  {Expected: "0000"},
+				"11": {ExpectedAny: []string{"aaaa", "bbbb"}},
 			},
 		},
 		{
 			Name:            "template-2",
 			AttestationType: "azure-tdx",
 			Measurement: map[string]domain.SingleMeasurement{
-				"8":  {Expected: []string{"1111"}},
-				"11": {Expected: []string{"cccc"}},
+				"8":  {Expected: "1111"},
+				"11": {Expected: "cccc"},
 			},
 		},
 	}

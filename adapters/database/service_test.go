@@ -63,7 +63,7 @@ func TestAdminFlow(t *testing.T) {
 
 	t.Run("AdminFlow", func(t *testing.T) {
 		t.Run("add measurement", func(t *testing.T) {
-			err := dbService.AddMeasurement(context.Background(), *domain.NewMeasurement("test-measurement-1", "test-type", map[string]domain.SingleMeasurement{"test": {Expected: []string{"0x1234"}}}), false)
+			err := dbService.AddMeasurement(context.Background(), *domain.NewMeasurement("test-measurement-1", "test-type", map[string]domain.SingleMeasurement{"test": {Expected: "0x1234"}}), false)
 			require.NoError(t, err)
 		})
 		t.Run("add builder", func(t *testing.T) {

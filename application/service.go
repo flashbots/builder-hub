@@ -95,7 +95,7 @@ func checkMeasurement(measurement map[string]string, measurementTemplate domain.
 		if !ok {
 			return false
 		}
-		if !matchesAnyExpected(val, v.Expected) {
+		if !matchesAnyExpected(val, v.GetExpectedValues()) {
 			return false
 		}
 	}
