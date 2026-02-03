@@ -225,11 +225,20 @@ Payload
 	"attestation_type": "azure-tdx",
 	"measurements": {
 		"11": {
-		    "expected": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"
+		    "expected_any": ["efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7", "abc123..."]
 	    },
+		"4": {
+		    "expected": "ea92ff762767eae6316794f1641c485d4846bc2b9df2eab6ba7f630ce6f4d66f"
+	    }
   }
 }
 ```
+
+Two fields are available for specifying expected values:
+- `expected` (string): A single expected value
+- `expected_any` (array): Multiple expected values - any matching value is accepted (OR semantics)
+
+Use `expected_any` when multiple firmware versions or configurations should be accepted for a single measurement key.
 
 Note that only the measurements given are expected, and any non-present will be ignored.
 
