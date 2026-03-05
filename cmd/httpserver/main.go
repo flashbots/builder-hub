@@ -101,16 +101,48 @@ var flags = []cli.Flag{
 		Usage:   "Postgres DSN",
 		EnvVars: []string{"POSTGRES_DSN"},
 	},
+	// AWS Secrets Manager configuration
 	&cli.StringFlag{
 		Name:    "secret-prefix",
 		Value:   "",
-		Usage:   "AWS Secret name",
+		Usage:   "AWS Secret name prefix (use with --aws-secrets)",
 		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME", "AWS_BUILDER_CONFIGS_SECRET_PREFIX"},
+	},
+	// HashiCorp Vault configuration
+	&cli.StringFlag{
+		Name:    "vault-address",
+		Value:   "http://localhost:8200",
+		Usage:   "HashiCorp Vault server address (use with --vault-enabled)",
+		EnvVars: []string{"VAULT_ADDR"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-token",
+		Value:   "",
+		Usage:   "HashiCorp Vault token for authentication (use with --vault-enabled)",
+		EnvVars: []string{"VAULT_TOKEN"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-secret-path",
+		Value:   "secrets/builder-hub",
+		Usage:   "Vault KV path for builder secrets (use with --vault-enabled)",
+		EnvVars: []string{"VAULT_SECRET_PATH"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-mount-path",
+		Value:   "secret",
+		Usage:   "Vault secrets mount path (e.g., 'secret', 'kv', 'kv-v2')",
+		EnvVars: []string{"VAULT_MOUNT_PATH"},
+	},
+	&cli.BoolFlag{
+		Name:    "vault-enabled",
+		Value:   false,
+		Usage:   "Use HashiCorp Vault for secrets storage (overrides secret-prefix)",
+		EnvVars: []string{"VAULT_ENABLED"},
 	},
 	&cli.BoolFlag{
 		Name:    "mock-secrets",
 		Value:   false,
-		Usage:   "Use inmemory secrets service for testing",
+		Usage:   "Use inmemory secrets service for testing (overrides other secret backends)",
 		EnvVars: []string{"MOCK_SECRETS"},
 	},
 }
@@ -175,15 +207,46 @@ func runCli(cCtx *cli.Context) error {
 
 	var sm ports.AdminSecretService
 
+	// Determine secret backend: mock > vault > aws-secrets-manager
+	vaultEnabled := cCtx.Bool("vault-enabled")
+	vaultToken := cCtx.String("vault-token")
+	vaultAddress := cCtx.String("vault-address")
+	vaultSecretPath := cCtx.String("vault-secret-path")
+	vaultMountPath := cCtx.String("vault-mount-path")
+
 	if mockSecretsStorage {
-		log.Info("using mock secrets storage")
+		log.Info("using mock secrets storage (in-memory)")
 		sm = domain.NewMockSecretService()
-	} else {
-		sm, err = secrets.NewService(cCtx.String("secret-prefix"))
+	} else if vaultEnabled && vaultToken != "" {
+		log.Info("using HashiCorp Vault for secrets",
+			"address", vaultAddress,
+			"secret_path", vaultSecretPath,
+			"mount_path", vaultMountPath)
+
+		vaultConfig := secrets.VaultConfig{
+			Address:      vaultAddress,
+			Token:        vaultToken,
+			SecretPrefix: vaultSecretPath,
+			MountPath:    vaultMountPath,
+		}
+
+		sm, err = secrets.NewHashicorpVaultService(vaultConfig)
+		if err != nil {
+			log.Error("failed to create Vault secrets service", "err", err)
+			return err
+		}
+	} else if cCtx.String("secret-prefix") != "" {
+		log.Info("using AWS Secrets Manager for secrets", "prefix", cCtx.String("secret-prefix"))
+		sm, err = secrets.NewAWSSecretsManagerService(cCtx.String("secret-prefix"))
 		if err != nil {
 			log.Error("failed to create secrets manager", "err", err)
 			return err
 		}
+	} else {
+		log.Warn("no secrets backend configured - using mock in-memory storage",
+			"vault-enabled", vaultEnabled,
+			"secret-prefix-length", len(cCtx.String("secret-prefix")))
+		sm = domain.NewMockSecretService()
 	}
 
 	builderHub := application.NewBuilderHub(db, sm)

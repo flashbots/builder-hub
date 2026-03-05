@@ -4,6 +4,10 @@ set -eu
 SCRIPT_DIR=$(dirname "$0")
 cd "$SCRIPT_DIR/../.."
 
+# Stop previous containers
+echo "Stopping previous Docker containers..."
+docker compose -f docker/docker-compose.yaml down
+
 # Build the Docker images
 echo "Building Docker images..."
 docker compose -f docker/docker-compose.yaml build
@@ -25,7 +29,7 @@ echo "Running integration tests..."
 
 # Enable failing for this command
 set +e
-hurl --test scripts/ci/e2e-test.hurl
+hurl --test scripts/ci/e2e-test.hurl -v
 set -e
 
 # Cleanup after tests

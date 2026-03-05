@@ -40,6 +40,9 @@ HTTP 200
 # [Admin API] Create an empty builder configuration
 POST http://localhost:8081/api/admin/v1/builders/configuration/test_builder
 {
+  "foo": {
+    "bar": "baz"
+  }
 }
 HTTP 200
 
@@ -81,6 +84,7 @@ GET http://localhost:8888/api/l1-builder/v1/configuration
 HTTP 200
 [Asserts]
 jsonpath "$.rbuilder.extra_data" == "FooBar"
+jsonpath "$.foo.bar" == "baz"
 
 # [Builder API] Get the list of peers
 GET http://localhost:8888/api/l1-builder/v1/builders

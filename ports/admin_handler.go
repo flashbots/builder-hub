@@ -23,7 +23,7 @@ type AdminBuilderService interface {
 }
 
 type AdminSecretService interface {
-	SetSecretValues(builderName string, message json.RawMessage) error
+	SetSecretValues(ctx context.Context, builderName string, message json.RawMessage) error
 	application.SecretAccessor
 }
 
@@ -57,25 +57,27 @@ func (s *AdminHandler) GetActiveConfigForBuilder(w http.ResponseWriter, r *http.
 }
 
 // GetFullConfigForBuilder returns the full config for a builder, including secrets
-// Note this copies logic from GetConfigWithSecrets in BuilderHubService
-// since we decided to avoid application layer here it probably makes sense unless
-// logic gets more complicated here
 func (s *AdminHandler) GetFullConfigForBuilder(w http.ResponseWriter, r *http.Request) {
 	builderName := chi.URLParam(r, "builderName")
-	_, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
+	config, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
 	if err != nil {
-		s.log.Error("failed to get config with secrets", "error", err)
+		s.log.Error("failed to get config for builder", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	secr, err := s.secretService.GetSecretValues(builderName)
+	secr, err := s.secretService.GetSecretValues(r.Context(), builderName)
 	if err != nil {
 		s.log.Error("failed to get secrets", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	_, err = w.Write(secr)
+	merged, err := application.MergeJSON(config, secr)
+	if err != nil {
+		s.log.Error("failed to merge config and secrets", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write(merged)
 	if err != nil {
 		s.log.Error("failed to write response", "error", err)
 	}
@@ -219,7 +221,7 @@ func (s *AdminHandler) SetSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.secretService.SetSecretValues(builderName, body)
+	err = s.secretService.SetSecretValues(r.Context(), builderName, body)
 	if err != nil {
 		s.log.Error("failed to set secret", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

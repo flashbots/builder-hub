@@ -1,7 +1,7 @@
-// Package secrets contains logic for adapter to aws secrets manager
 package secrets
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -9,14 +9,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/flashbots/builder-hub/application"
 )
 
-type Service struct {
+type awsSecretsService struct {
 	sm           *secretsmanager.SecretsManager
 	secretPrefix string
 }
 
-func NewService(secretPrefix string) (*Service, error) {
+func NewAWSSecretsManagerService(secretPrefix string) (*awsSecretsService, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("us-east-2"),
 	})
@@ -27,21 +28,19 @@ func NewService(secretPrefix string) (*Service, error) {
 	// Create a Secrets Manager client
 	svc := secretsmanager.New(sess)
 
-	return &Service{sm: svc, secretPrefix: secretPrefix}, nil
+	return &awsSecretsService{sm: svc, secretPrefix: secretPrefix}, nil
 }
 
-var ErrMissingSecret = errors.New("missing secret for builder")
-
-func (s *Service) secretName(builderName string) string {
+func (s *awsSecretsService) secretName(builderName string) string {
 	return s.secretPrefix + "/" + builderName
 }
 
-func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
+func (s *awsSecretsService) GetSecretValues(ctx context.Context, builderName string) (json.RawMessage, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(s.secretName(builderName)),
 	}
 
-	result, err := s.sm.GetSecretValue(input)
+	result, err := s.sm.GetSecretValueWithContext(ctx, input)
 	if err != nil {
 		// If the secret doesn't exist, return empty JSON for new builders
 		var awsErr awserr.Error
@@ -58,19 +57,19 @@ func (s *Service) GetSecretValues(builderName string) (json.RawMessage, error) {
 
 	builderSecret, ok := secretData[builderName]
 	if !ok {
-		return nil, ErrMissingSecret
+		return nil, application.ErrMissingSecret
 	}
 
 	return builderSecret, nil
 }
 
-func (s *Service) SetSecretValues(builderName string, values json.RawMessage) error {
+func (s *awsSecretsService) SetSecretValues(ctx context.Context, builderName string, values json.RawMessage) error {
 	secretName := s.secretName(builderName)
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
 
-	result, err := s.sm.GetSecretValue(input)
+	result, err := s.sm.GetSecretValueWithContext(ctx, input)
 	var secretData map[string]json.RawMessage
 
 	if err != nil {
@@ -88,7 +87,7 @@ func (s *Service) SetSecretValues(builderName string, values json.RawMessage) er
 				Name:         aws.String(secretName),
 				SecretString: aws.String(string(newSecretString)),
 			}
-			_, createErr := s.sm.CreateSecret(createInput)
+			_, createErr := s.sm.CreateSecretWithContext(ctx, createInput)
 			return createErr
 		}
 		return err
@@ -111,7 +110,7 @@ func (s *Service) SetSecretValues(builderName string, values json.RawMessage) er
 		SecretId:     aws.String(secretName),
 		SecretString: aws.String(string(newSecretString)),
 	}
-	_, err = s.sm.PutSecretValue(sv)
+	_, err = s.sm.PutSecretValueWithContext(ctx, sv)
 	if err != nil {
 		return err
 	}

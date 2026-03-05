@@ -3,7 +3,9 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"net"
 
 	"github.com/flashbots/builder-hub/domain"
@@ -19,8 +21,10 @@ type BuilderDataAccessor interface {
 	LogEvent(ctx context.Context, eventName, builderName, name string) error
 }
 
+var ErrMissingSecret = errors.New("missing secret for builder")
+
 type SecretAccessor interface {
-	GetSecretValues(builderName string) (json.RawMessage, error)
+	GetSecretValues(ctx context.Context, builderName string) (json.RawMessage, error)
 }
 
 type BuilderHub struct {
@@ -49,15 +53,32 @@ func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderN
 }
 
 func (b *BuilderHub) GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error) {
-	_, err := b.dataAccessor.GetActiveConfigForBuilder(ctx, builderName)
+	config, err := b.dataAccessor.GetActiveConfigForBuilder(ctx, builderName)
 	if err != nil {
 		return nil, fmt.Errorf("failing to fetch config for builder %s %w", builderName, err)
 	}
-	secr, err := b.secretAccessor.GetSecretValues(builderName)
+	secr, err := b.secretAccessor.GetSecretValues(ctx, builderName)
 	if err != nil {
 		return nil, fmt.Errorf("failing to fetch secrets for builder %s %w", builderName, err)
 	}
-	return secr, nil
+	merged, err := MergeJSON(config, secr)
+	if err != nil {
+		return nil, fmt.Errorf("failing to merge config and secrets for builder %s %w", builderName, err)
+	}
+	return merged, nil
+}
+
+func MergeJSON(base, override json.RawMessage) (json.RawMessage, error) {
+	result := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(base, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal base: %w", err)
+	}
+	overrideMap := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(override, &overrideMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal override: %w", err)
+	}
+	maps.Copy(result, overrideMap)
+	return json.Marshal(result)
 }
 
 func (b *BuilderHub) VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error) {
