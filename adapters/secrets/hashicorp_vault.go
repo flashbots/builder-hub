@@ -35,7 +35,9 @@ func NewHashicorpVaultService(cfg VaultConfig) (*hashicorpVaultService, error) {
 		return nil, fmt.Errorf("failed to create Vault client: %w", err)
 	}
 
-	client.SetToken(cfg.Token)
+	if err := client.SetToken(cfg.Token); err != nil {
+		return nil, fmt.Errorf("failed to set Vault token: %w", err)
+	}
 
 	// Verify connection by attempting a read (404 is fine — path may not exist yet)
 	ctx := context.Background()
