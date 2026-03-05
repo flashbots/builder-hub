@@ -1,3 +1,4 @@
+// Package secrets implements secrets storage backends
 package secrets
 
 import (
