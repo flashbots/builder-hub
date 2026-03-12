@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
@@ -14,43 +16,89 @@ type hashicorpVaultService struct {
 	client     *vault.Client
 	secretPath string
 	mountPath  string
+	log        *slog.Logger
 }
 
 type VaultConfig struct {
 	Address      string // Vault server address (e.g., http://localhost:8200)
-	Token        string // Vault token for authentication
+	Token        string // Vault token for authentication (used when AuthMethod=="token")
 	SecretPrefix string // Path prefix for secrets (e.g., "secrets/builder-hub")
 	MountPath    string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
+	AuthMethod   string // "token" (default) or "kubernetes"
+	Role         string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
+	Jwt          string // ServiceAccount JWT for Kubernetes auth (required if AuthMethod=="kubernetes")
 }
 
-func NewHashicorpVaultService(cfg VaultConfig) (*hashicorpVaultService, error) {
+func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultConfig) (*hashicorpVaultService, error) {
 	if cfg.MountPath == "" {
 		cfg.MountPath = "secret"
 	}
 
-	client, err := vault.New(
-		vault.WithAddress(cfg.Address),
-	)
+	client, err := vault.New(vault.WithAddress(cfg.Address))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Vault client: %w", err)
 	}
 
-	if err := client.SetToken(cfg.Token); err != nil {
-		return nil, fmt.Errorf("failed to set Vault token: %w", err)
+	if cfg.AuthMethod != "token" && cfg.AuthMethod != "kubernetes" && cfg.AuthMethod != "" {
+		return nil, fmt.Errorf("unsupported AuthMethod %s", cfg.AuthMethod)
+	}
+
+	svc := &hashicorpVaultService{
+		client:     client,
+		secretPath: cfg.SecretPrefix,
+		mountPath:  cfg.MountPath,
+		log:        log,
+	}
+
+	if cfg.AuthMethod == "kubernetes" {
+		if cfg.Jwt == "" {
+			return nil, fmt.Errorf("Jwt is required for Kubernetes auth")
+		}
+		authResp, err := client.Auth.KubernetesLogin(ctx, schema.KubernetesLoginRequest{Role: cfg.Role, Jwt: cfg.Jwt})
+		if err != nil {
+			return nil, fmt.Errorf("Kubernetes auth failed: %w", err)
+		}
+		if err := client.SetToken(authResp.Auth.ClientToken); err != nil {
+			return nil, fmt.Errorf("failed to set Vault token after Kubernetes auth: %w", err)
+		}
+		svc.startTokenRenewal(ctx, authResp.Auth.LeaseDuration, authResp.Auth.Renewable)
+	} else {
+		if err := client.SetToken(cfg.Token); err != nil {
+			return nil, fmt.Errorf("failed to set Vault token: %w", err)
+		}
 	}
 
 	// Verify connection by attempting a read (404 is fine — path may not exist yet)
-	ctx := context.Background()
-	_, verifyErr := client.Secrets.KvV2Read(ctx, cfg.SecretPrefix, vault.WithMountPath(cfg.MountPath))
+	_, verifyErr := client.Secrets.KvV2Read(context.Background(), cfg.SecretPrefix, vault.WithMountPath(cfg.MountPath))
 	if verifyErr != nil && !isVault404(verifyErr) {
 		return nil, fmt.Errorf("failed to verify Vault connection: %w", verifyErr)
 	}
 
-	return &hashicorpVaultService{
-		client:     client,
-		secretPath: cfg.SecretPrefix,
-		mountPath:  cfg.MountPath,
-	}, nil
+	return svc, nil
+}
+
+// startTokenRenewal runs a background goroutine that periodically renews the Vault token.
+// It exits when ctx is cancelled or if the token is non-renewable.
+func (s *hashicorpVaultService) startTokenRenewal(ctx context.Context, leaseDurationSeconds int, renewable bool) {
+	if leaseDurationSeconds <= 0 || !renewable {
+		return
+	}
+
+	// Renew at 2/3 of the initial lease duration.
+	waitDuration := time.Duration(leaseDurationSeconds) * time.Second * 2 / 3
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(waitDuration):
+				if _, err := s.client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{}); err != nil {
+					s.log.Error("vault token renewal failed", "err", err)
+				}
+			}
+		}
+	}()
 }
 
 func isVault404(err error) bool {

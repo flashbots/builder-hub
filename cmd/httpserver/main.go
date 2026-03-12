@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -122,6 +123,24 @@ var flags = []cli.Flag{
 		EnvVars: []string{"VAULT_TOKEN"},
 	},
 	&cli.StringFlag{
+		Name:    "vault-auth-method",
+		Value:   "token",
+		Usage:   "Vault authentication method",
+		EnvVars: []string{"VAULT_AUTH_METHOD"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-kubernetes-role",
+		Value:   "",
+		Usage:   "Vault role name for Kubernetes auth",
+		EnvVars: []string{"VAULT_KUBERNETES_ROLE"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-kubernetes-jwt-path",
+		Value:   "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		Usage:   "Path to ServiceAccount JWT for Kubernetes auth",
+		EnvVars: []string{"VAULT_KUBERNETES_JWT_PATH"},
+	},
+	&cli.StringFlag{
 		Name:    "vault-secret-path",
 		Value:   "secrets/builder-hub",
 		Usage:   "Vault KV path for builder secrets (use with --vault-enabled)",
@@ -162,6 +181,9 @@ func main() {
 }
 
 func runCli(cCtx *cli.Context) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	listenAddr := cCtx.String("listen-addr")
 	adminAddr := cCtx.String("admin-addr")
 	internalAddr := cCtx.String("internal-addr")
@@ -176,6 +198,14 @@ func runCli(cCtx *cli.Context) error {
 	adminBasicUser := cCtx.String("admin-basic-user")
 	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
 	disableAdminAuth := cCtx.Bool("disable-admin-auth")
+	vaultEnabled := cCtx.Bool("vault-enabled")
+	vaultToken := cCtx.String("vault-token")
+	vaultAddress := cCtx.String("vault-address")
+	vaultSecretPath := cCtx.String("vault-secret-path")
+	vaultMountPath := cCtx.String("vault-mount-path")
+	vaultAuthMethod := cCtx.String("vault-auth-method")
+	vaultRole := cCtx.String("vault-kubernetes-role")
+	vaultJwtPath := cCtx.String("vault-kubernetes-jwt-path")
 
 	logTags := map[string]string{
 		"version": common.Version,
@@ -208,29 +238,37 @@ func runCli(cCtx *cli.Context) error {
 	var sm ports.AdminSecretService
 
 	// Determine secret backend: mock > vault > aws-secrets-manager
-	vaultEnabled := cCtx.Bool("vault-enabled")
-	vaultToken := cCtx.String("vault-token")
-	vaultAddress := cCtx.String("vault-address")
-	vaultSecretPath := cCtx.String("vault-secret-path")
-	vaultMountPath := cCtx.String("vault-mount-path")
-
 	if mockSecretsStorage {
 		log.Info("using mock secrets storage (in-memory)")
 		sm = domain.NewMockSecretService()
-	} else if vaultEnabled && vaultToken != "" {
+	} else if vaultEnabled {
 		log.Info("using HashiCorp Vault for secrets",
 			"address", vaultAddress,
 			"secret_path", vaultSecretPath,
-			"mount_path", vaultMountPath)
+			"mount_path", vaultMountPath,
+			"auth_method", vaultAuthMethod)
+
+		var vaultJwt string
+		if vaultAuthMethod == "kubernetes" {
+			jwtBytes, err := os.ReadFile(vaultJwtPath)
+			if err != nil {
+				log.Error("failed to read Vault JWT file", "path", vaultJwtPath, "err", err)
+				return err
+			}
+			vaultJwt = string(jwtBytes)
+		}
 
 		vaultConfig := secrets.VaultConfig{
 			Address:      vaultAddress,
 			Token:        vaultToken,
 			SecretPrefix: vaultSecretPath,
 			MountPath:    vaultMountPath,
+			AuthMethod:   vaultAuthMethod,
+			Role:         vaultRole,
+			Jwt:          vaultJwt,
 		}
 
-		sm, err = secrets.NewHashicorpVaultService(vaultConfig)
+		sm, err = secrets.NewHashicorpVaultService(ctx, log.Logger, vaultConfig)
 		if err != nil {
 			log.Error("failed to create Vault secrets service", "err", err)
 			return err
@@ -277,10 +315,8 @@ func runCli(cCtx *cli.Context) error {
 		return err
 	}
 
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 	srv.RunInBackground()
-	<-exit
+	<-ctx.Done()
 
 	// Shutdown server once termination signal is received
 	srv.Shutdown()
