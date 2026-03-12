@@ -37,7 +37,7 @@ POST http://localhost:8081/api/admin/v1/builders
 }
 HTTP 200
 
-# [Admin API] Create an empty builder configuration
+[Admin API] Create an initial builder configuration with test data
 POST http://localhost:8081/api/admin/v1/builders/configuration/test_builder
 {
   "foo": {

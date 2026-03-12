@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	vault "github.com/hashicorp/vault/api"
 	authkubernetes "github.com/hashicorp/vault/api/auth/kubernetes"
@@ -53,7 +54,7 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 
 	if cfg.AuthMethod == "kubernetes" {
 		if cfg.Jwt == "" {
-			return nil, fmt.Errorf("Jwt is required for Kubernetes auth")
+			return nil, fmt.Errorf("JWT is required for Kubernetes auth")
 		}
 		k8sAuth, err := authkubernetes.NewKubernetesAuth(cfg.Role, authkubernetes.WithServiceAccountToken(cfg.Jwt))
 		if err != nil {
@@ -69,11 +70,16 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		}
 		go svc.watchTokenRenewal(ctx, watcher)
 	} else {
+		if cfg.Token == "" {
+			return nil, errors.New("token is required for vault auth")
+		}
 		client.SetToken(cfg.Token)
 	}
 
 	// Verify connection by attempting a read (404 is fine — path may not exist yet)
-	_, verifyErr := client.KVv2(cfg.MountPath).Get(ctx, cfg.SecretPrefix)
+	verifyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	_, verifyErr := client.KVv2(cfg.MountPath).Get(verifyCtx, cfg.SecretPrefix)
 	if verifyErr != nil && !isVault404(verifyErr) {
 		return nil, fmt.Errorf("failed to verify Vault connection: %w", verifyErr)
 	}

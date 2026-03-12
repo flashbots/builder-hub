@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -106,7 +107,7 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "secret-prefix",
 		Value:   "",
-		Usage:   "AWS Secret name prefix (use with --aws-secrets)",
+		Usage:   "AWS Secret name",
 		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME", "AWS_BUILDER_CONFIGS_SECRET_PREFIX"},
 	},
 	// HashiCorp Vault configuration
@@ -281,10 +282,8 @@ func runCli(cCtx *cli.Context) error {
 			return err
 		}
 	} else {
-		log.Warn("no secrets backend configured - using mock in-memory storage",
-			"vault-enabled", vaultEnabled,
-			"secret-prefix-length", len(cCtx.String("secret-prefix")))
-		sm = domain.NewMockSecretService()
+		log.Error("no secrets backend configured: set --vault-enabled or --secret-prefix for production, or use --mock-secrets for local development")
+		return fmt.Errorf("no secrets backend configured")
 	}
 
 	builderHub := application.NewBuilderHub(db, sm)

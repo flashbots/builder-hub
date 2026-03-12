@@ -60,7 +60,10 @@ func (s *AdminHandler) GetActiveConfigForBuilder(w http.ResponseWriter, r *http.
 func (s *AdminHandler) GetFullConfigForBuilder(w http.ResponseWriter, r *http.Request) {
 	builderName := chi.URLParam(r, "builderName")
 	config, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
-	if err != nil {
+	if errors.Is(err, domain.ErrNotFound) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
 		s.log.Error("failed to get config for builder", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
