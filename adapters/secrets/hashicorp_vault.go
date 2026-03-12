@@ -62,7 +62,7 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		}
 		authInfo, err := client.Auth().Login(ctx, k8sAuth)
 		if err != nil {
-			return nil, fmt.Errorf("Kubernetes auth failed: %w", err)
+			return nil, fmt.Errorf("kubernetes auth failed: %w", err)
 		}
 		watcher, err := client.NewLifetimeWatcher(&vault.LifetimeWatcherInput{Secret: authInfo})
 		if err != nil {
