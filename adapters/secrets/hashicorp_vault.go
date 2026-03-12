@@ -6,10 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
-	"github.com/hashicorp/vault-client-go"
-	"github.com/hashicorp/vault-client-go/schema"
+	vault "github.com/hashicorp/vault/api"
+	authkubernetes "github.com/hashicorp/vault/api/auth/kubernetes"
 )
 
 type hashicorpVaultService struct {
@@ -34,13 +33,15 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		cfg.MountPath = "secret"
 	}
 
-	client, err := vault.New(vault.WithAddress(cfg.Address))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Vault client: %w", err)
-	}
-
 	if cfg.AuthMethod != "token" && cfg.AuthMethod != "kubernetes" && cfg.AuthMethod != "" {
 		return nil, fmt.Errorf("unsupported AuthMethod %s", cfg.AuthMethod)
+	}
+
+	vcfg := vault.DefaultConfig()
+	vcfg.Address = cfg.Address
+	client, err := vault.NewClient(vcfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Vault client: %w", err)
 	}
 
 	svc := &hashicorpVaultService{
@@ -54,22 +55,25 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		if cfg.Jwt == "" {
 			return nil, fmt.Errorf("Jwt is required for Kubernetes auth")
 		}
-		authResp, err := client.Auth.KubernetesLogin(ctx, schema.KubernetesLoginRequest{Role: cfg.Role, Jwt: cfg.Jwt})
+		k8sAuth, err := authkubernetes.NewKubernetesAuth(cfg.Role, authkubernetes.WithServiceAccountToken(cfg.Jwt))
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize Kubernetes auth: %w", err)
+		}
+		authInfo, err := client.Auth().Login(ctx, k8sAuth)
 		if err != nil {
 			return nil, fmt.Errorf("Kubernetes auth failed: %w", err)
 		}
-		if err := client.SetToken(authResp.Auth.ClientToken); err != nil {
-			return nil, fmt.Errorf("failed to set Vault token after Kubernetes auth: %w", err)
+		watcher, err := client.NewLifetimeWatcher(&vault.LifetimeWatcherInput{Secret: authInfo})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create token lifetime watcher: %w", err)
 		}
-		svc.startTokenRenewal(ctx, authResp.Auth.LeaseDuration, authResp.Auth.Renewable)
+		go svc.watchTokenRenewal(ctx, watcher)
 	} else {
-		if err := client.SetToken(cfg.Token); err != nil {
-			return nil, fmt.Errorf("failed to set Vault token: %w", err)
-		}
+		client.SetToken(cfg.Token)
 	}
 
 	// Verify connection by attempting a read (404 is fine — path may not exist yet)
-	_, verifyErr := client.Secrets.KvV2Read(context.Background(), cfg.SecretPrefix, vault.WithMountPath(cfg.MountPath))
+	_, verifyErr := client.KVv2(cfg.MountPath).Get(ctx, cfg.SecretPrefix)
 	if verifyErr != nil && !isVault404(verifyErr) {
 		return nil, fmt.Errorf("failed to verify Vault connection: %w", verifyErr)
 	}
@@ -77,28 +81,23 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 	return svc, nil
 }
 
-// startTokenRenewal runs a background goroutine that periodically renews the Vault token.
-// It exits when ctx is cancelled or if the token is non-renewable.
-func (s *hashicorpVaultService) startTokenRenewal(ctx context.Context, leaseDurationSeconds int, renewable bool) {
-	if leaseDurationSeconds <= 0 || !renewable {
-		return
-	}
+func (s *hashicorpVaultService) watchTokenRenewal(ctx context.Context, watcher *vault.LifetimeWatcher) {
+	go watcher.Start()
+	defer watcher.Stop()
 
-	// Renew at 2/3 of the initial lease duration.
-	waitDuration := time.Duration(leaseDurationSeconds) * time.Second * 2 / 3
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(waitDuration):
-				if _, err := s.client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{}); err != nil {
-					s.log.Error("vault token renewal failed", "err", err)
-				}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-watcher.DoneCh():
+			if err != nil {
+				s.log.Error("vault token renewal stopped", "err", err)
 			}
+			return
+		case <-watcher.RenewCh():
+			s.log.Debug("vault token renewed")
 		}
-	}()
+	}
 }
 
 func isVault404(err error) bool {
@@ -118,7 +117,7 @@ func (s *hashicorpVaultService) secretKVPath(builderName string) string {
 func (s *hashicorpVaultService) GetSecretValues(ctx context.Context, builderName string) (json.RawMessage, error) {
 	path := s.secretKVPath(builderName)
 
-	response, err := s.client.Secrets.KvV2Read(ctx, path, vault.WithMountPath(s.mountPath))
+	secret, err := s.client.KVv2(s.mountPath).Get(ctx, path)
 	if err != nil {
 		if isVault404(err) {
 			return json.RawMessage("{}"), nil
@@ -126,11 +125,11 @@ func (s *hashicorpVaultService) GetSecretValues(ctx context.Context, builderName
 		return nil, fmt.Errorf("failed to read secret from Vault: %w", err)
 	}
 
-	if response.Data.Data == nil {
+	if secret == nil || secret.Data == nil {
 		return json.RawMessage("{}"), nil
 	}
 
-	secretJSON, err := json.Marshal(response.Data.Data)
+	secretJSON, err := json.Marshal(secret.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Vault secret: %w", err)
 	}
@@ -148,7 +147,7 @@ func (s *hashicorpVaultService) SetSecretValues(ctx context.Context, builderName
 		return fmt.Errorf("failed to unmarshal secret values: %w", err)
 	}
 
-	_, err := s.client.Secrets.KvV2Write(ctx, path, schema.KvV2WriteRequest{Data: dataMap}, vault.WithMountPath(s.mountPath))
+	_, err := s.client.KVv2(s.mountPath).Put(ctx, path, dataMap)
 	if err != nil {
 		return fmt.Errorf("failed to write secret to Vault: %w", err)
 	}
