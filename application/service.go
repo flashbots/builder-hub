@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 
@@ -19,8 +20,10 @@ type BuilderDataAccessor interface {
 	LogEvent(ctx context.Context, eventName, builderName, name string) error
 }
 
+var ErrMissingSecret = errors.New("missing secret for builder")
+
 type SecretAccessor interface {
-	GetSecretValues(builderName string) (json.RawMessage, error)
+	GetSecretValues(ctx context.Context, builderName string) (json.RawMessage, error)
 }
 
 type BuilderHub struct {
@@ -53,7 +56,7 @@ func (b *BuilderHub) GetConfigWithSecrets(ctx context.Context, builderName strin
 	if err != nil {
 		return nil, fmt.Errorf("failing to fetch config for builder %s %w", builderName, err)
 	}
-	secr, err := b.secretAccessor.GetSecretValues(builderName)
+	secr, err := b.secretAccessor.GetSecretValues(ctx, builderName)
 	if err != nil {
 		return nil, fmt.Errorf("failing to fetch secrets for builder %s %w", builderName, err)
 	}

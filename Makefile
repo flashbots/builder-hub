@@ -56,6 +56,9 @@ dev-docker-compose-up: ## Start Docker compose
 dev-docker-compose-down: ## Stop Docker compose
 	docker compose -f docker/docker-compose.yaml down
 
+.PHONY: dev-docker-compose-restart
+dev-docker-compose-restart: dev-docker-compose-down dev-docker-compose-up
+
 .PHONY: lt
 lt: lint test ## Run linters and tests (always do this!)
 

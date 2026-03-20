@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -101,16 +103,66 @@ var flags = []cli.Flag{
 		Usage:   "Postgres DSN",
 		EnvVars: []string{"POSTGRES_DSN"},
 	},
+	// AWS Secrets Manager configuration
 	&cli.StringFlag{
 		Name:    "secret-prefix",
 		Value:   "",
 		Usage:   "AWS Secret name",
 		EnvVars: []string{"AWS_BUILDER_CONFIGS_SECRET_NAME", "AWS_BUILDER_CONFIGS_SECRET_PREFIX"},
 	},
+	// HashiCorp Vault configuration
+	&cli.StringFlag{
+		Name:    "vault-address",
+		Value:   "http://localhost:8200",
+		Usage:   "HashiCorp Vault server address (use with --vault-enabled)",
+		EnvVars: []string{"VAULT_ADDR"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-token",
+		Value:   "",
+		Usage:   "HashiCorp Vault token for authentication (use with --vault-enabled)",
+		EnvVars: []string{"VAULT_TOKEN"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-auth-method",
+		Value:   "token",
+		Usage:   "Vault authentication method",
+		EnvVars: []string{"VAULT_AUTH_METHOD"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-kubernetes-role",
+		Value:   "",
+		Usage:   "Vault role name for Kubernetes auth",
+		EnvVars: []string{"VAULT_KUBERNETES_ROLE"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-kubernetes-jwt-path",
+		Value:   "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		Usage:   "Path to ServiceAccount JWT for Kubernetes auth",
+		EnvVars: []string{"VAULT_KUBERNETES_JWT_PATH"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-secret-path",
+		Value:   "secrets/builder-hub",
+		Usage:   "Vault KV path for builder secrets (use with --vault-enabled)",
+		EnvVars: []string{"VAULT_SECRET_PATH"},
+	},
+	&cli.StringFlag{
+		Name:    "vault-mount-path",
+		Value:   "secret",
+		Usage:   "Vault secrets mount path (e.g., 'secret', 'kv', 'kv-v2')",
+		EnvVars: []string{"VAULT_MOUNT_PATH"},
+	},
+	&cli.BoolFlag{
+		Name:    "vault-enabled",
+		Value:   false,
+		Usage:   "Use HashiCorp Vault for secrets storage (overrides secret-prefix)",
+		EnvVars: []string{"VAULT_ENABLED"},
+	},
 	&cli.BoolFlag{
 		Name:    "mock-secrets",
 		Value:   false,
-		Usage:   "Use inmemory secrets service for testing",
+		Usage:   "Use inmemory secrets service for testing (overrides other secret backends)",
 		EnvVars: []string{"MOCK_SECRETS"},
 	},
 }
@@ -130,6 +182,9 @@ func main() {
 }
 
 func runCli(cCtx *cli.Context) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	listenAddr := cCtx.String("listen-addr")
 	adminAddr := cCtx.String("admin-addr")
 	internalAddr := cCtx.String("internal-addr")
@@ -144,6 +199,14 @@ func runCli(cCtx *cli.Context) error {
 	adminBasicUser := cCtx.String("admin-basic-user")
 	adminPasswordBcrypt := cCtx.String("admin-basic-password-bcrypt")
 	disableAdminAuth := cCtx.Bool("disable-admin-auth")
+	vaultEnabled := cCtx.Bool("vault-enabled")
+	vaultToken := cCtx.String("vault-token")
+	vaultAddress := cCtx.String("vault-address")
+	vaultSecretPath := cCtx.String("vault-secret-path")
+	vaultMountPath := cCtx.String("vault-mount-path")
+	vaultAuthMethod := cCtx.String("vault-auth-method")
+	vaultRole := cCtx.String("vault-kubernetes-role")
+	vaultJwtPath := cCtx.String("vault-kubernetes-jwt-path")
 
 	logTags := map[string]string{
 		"version": common.Version,
@@ -175,15 +238,52 @@ func runCli(cCtx *cli.Context) error {
 
 	var sm ports.AdminSecretService
 
+	// Determine secret backend: mock > vault > aws-secrets-manager
 	if mockSecretsStorage {
-		log.Info("using mock secrets storage")
+		log.Info("using mock secrets storage (in-memory)")
 		sm = domain.NewMockSecretService()
-	} else {
-		sm, err = secrets.NewService(cCtx.String("secret-prefix"))
+	} else if vaultEnabled {
+		log.Info("using HashiCorp Vault for secrets",
+			"address", vaultAddress,
+			"secret_path", vaultSecretPath,
+			"mount_path", vaultMountPath,
+			"auth_method", vaultAuthMethod)
+
+		var vaultJwt string
+		if vaultAuthMethod == "kubernetes" {
+			jwtBytes, err := os.ReadFile(vaultJwtPath)
+			if err != nil {
+				log.Error("failed to read Vault JWT file", "path", vaultJwtPath, "err", err)
+				return err
+			}
+			vaultJwt = string(jwtBytes)
+		}
+
+		vaultConfig := secrets.VaultConfig{
+			Address:      vaultAddress,
+			Token:        vaultToken,
+			SecretPrefix: vaultSecretPath,
+			MountPath:    vaultMountPath,
+			AuthMethod:   vaultAuthMethod,
+			Role:         vaultRole,
+			Jwt:          vaultJwt,
+		}
+
+		sm, err = secrets.NewHashicorpVaultService(ctx, log.Logger, vaultConfig)
+		if err != nil {
+			log.Error("failed to create Vault secrets service", "err", err)
+			return err
+		}
+	} else if cCtx.String("secret-prefix") != "" {
+		log.Info("using AWS Secrets Manager for secrets", "prefix", cCtx.String("secret-prefix"))
+		sm, err = secrets.NewAWSSecretsManagerService(cCtx.String("secret-prefix"))
 		if err != nil {
 			log.Error("failed to create secrets manager", "err", err)
 			return err
 		}
+	} else {
+		log.Error("no secrets backend configured: set --vault-enabled or --secret-prefix for production, or use --mock-secrets for local development")
+		return fmt.Errorf("no secrets backend configured")
 	}
 
 	builderHub := application.NewBuilderHub(db, sm)
@@ -214,10 +314,8 @@ func runCli(cCtx *cli.Context) error {
 		return err
 	}
 
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 	srv.RunInBackground()
-	<-exit
+	<-ctx.Done()
 
 	// Shutdown server once termination signal is received
 	srv.Shutdown()

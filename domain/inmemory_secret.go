@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 )
@@ -17,13 +18,13 @@ func NewMockSecretService() *InmemorySecretService {
 	}
 }
 
-func (mss *InmemorySecretService) GetSecretValues(builderName string) (json.RawMessage, error) {
+func (mss *InmemorySecretService) GetSecretValues(ctx context.Context, builderName string) (json.RawMessage, error) {
 	mss.mu.RLock()
 	defer mss.mu.RUnlock()
 	return mss.st[builderName], nil
 }
 
-func (mss *InmemorySecretService) SetSecretValues(builderName string, values json.RawMessage) error {
+func (mss *InmemorySecretService) SetSecretValues(ctx context.Context, builderName string, values json.RawMessage) error {
 	mss.mu.Lock()
 	defer mss.mu.Unlock()
 	mss.st[builderName] = values

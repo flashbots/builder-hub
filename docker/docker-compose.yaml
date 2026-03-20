@@ -18,6 +18,52 @@ services:
       start_period: 2s
       timeout: 5s
 
+  vault:
+    image: hashicorp/vault:1.21
+    ports:
+      - 127.0.0.1:8200:8200
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root-token"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    command: server -dev -dev-root-token-id="root-token" -dev-listen-address="0.0.0.0:8200"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8200/v1/sys/health?standbyok=true&perfstandbyok=true || exit 1"]
+      interval: 5s
+      retries: 10
+      start_period: 5s
+      timeout: 5s
+    cap_add:
+      - IPC_LOCK
+
+  # Python server that always returns authenticated: true for any TokenReview request
+  # (Vault requires an asymmetric JWT algorithm like RS256, but delegates actual validation to this mock)
+  mock-k8s:
+    build:
+      context: ../.
+      dockerfile: docker/mock-k8s/Dockerfile
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8443/"]
+      interval: 5s
+      retries: 5
+      start_period: 2s
+      timeout: 5s
+
+  # Generates a fresh RSA key + RS256-signed SA JWT, writes it to the shared volume,
+  # configures Vault kubernetes auth pointing at mock-k8s, creates a builder-hub policy with secret/* access
+  vault-init:
+    build:
+      context: ../.
+      dockerfile: docker/vault-init/Dockerfile
+    depends_on:
+      vault:
+        condition: service_healthy
+      mock-k8s:
+        condition: service_healthy
+    volumes:
+      # JWT for builder-hub to read - prepared in this container
+      - vault-jwt:/vault-jwt
+    restart: "no"
+
   builder-hub-api:
     image: flashbots/builder-hub
     build:
@@ -27,15 +73,32 @@ services:
       db:
         condition: service_healthy
         restart: true
+      vault:
+        condition: service_healthy
+        restart: true
+      vault-init:
+        condition: service_completed_successfully
     links:
       - "db:database"
+      - "vault:vault"
+    volumes:
+      # builder-hub reads this JWT, logs in via Vault kubernetes auth,
+      # gets a token with the builder-hub policy and then can read/write KV secrets
+      - vault-jwt:/var/run/secrets/kubernetes.io/serviceaccount
     ports:
       - 127.0.0.1:8080:8080
       - 127.0.0.1:8081:8081
       - 127.0.0.1:8082:8082
       - 127.0.0.1:8090:8090
     environment:
-      MOCK_SECRETS: true
+      MOCK_SECRETS: false
+      VAULT_ENABLED: true
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_AUTH_METHOD: "kubernetes"
+      VAULT_KUBERNETES_ROLE: "builder-hub"
+      VAULT_KUBERNETES_JWT_PATH: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      VAULT_MOUNT_PATH: "secret"
+      VAULT_SECRET_PATH: ""
       POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
       LISTEN_ADDR: "0.0.0.0:8080"
       ADMIN_ADDR: "0.0.0.0:8081"
@@ -44,10 +107,15 @@ services:
       DISABLE_ADMIN_AUTH: "1" # local dev only; do not use in production
 
   proxy:
-    image: flashbots/builder-hub-mock-proxy
+    build:
+      context: ./mock-proxy
+      dockerfile: Dockerfile
     links:
       - "builder-hub-api:builder-hub-api"
     ports:
       - 127.0.0.1:8888:8888
     environment:
       TARGET: "http://builder-hub-api:8080"
+
+volumes:
+  vault-jwt:
