@@ -59,7 +59,7 @@ func (s *AdminHandler) GetActiveConfigForBuilder(w http.ResponseWriter, r *http.
 // GetFullConfigForBuilder returns the full config for a builder, including secrets
 func (s *AdminHandler) GetFullConfigForBuilder(w http.ResponseWriter, r *http.Request) {
 	builderName := chi.URLParam(r, "builderName")
-	config, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
+	_, err := s.builderService.GetActiveConfigForBuilder(r.Context(), builderName)
 	if errors.Is(err, domain.ErrNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -74,13 +74,7 @@ func (s *AdminHandler) GetFullConfigForBuilder(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	merged, err := application.MergeJSON(config, secr)
-	if err != nil {
-		s.log.Error("failed to merge config and secrets", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, err = w.Write(merged)
+	_, err = w.Write(secr)
 	if err != nil {
 		s.log.Error("failed to write response", "error", err)
 	}
