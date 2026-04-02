@@ -136,6 +136,12 @@ var flags = []cli.Flag{
 		EnvVars: []string{"VAULT_KUBERNETES_ROLE"},
 	},
 	&cli.StringFlag{
+		Name:    "vault-kubernetes-auth-path",
+		Value:   "",
+		Usage:   "Vault auth mount path for Kubernetes auth (e.g., 'k8s/eth-l1-prod', defaults to 'kubernetes')",
+		EnvVars: []string{"VAULT_KUBERNETES_AUTH_PATH"},
+	},
+	&cli.StringFlag{
 		Name:    "vault-kubernetes-jwt-path",
 		Value:   "/var/run/secrets/kubernetes.io/serviceaccount/token",
 		Usage:   "Path to ServiceAccount JWT for Kubernetes auth",
@@ -206,6 +212,7 @@ func runCli(cCtx *cli.Context) error {
 	vaultMountPath := cCtx.String("vault-mount-path")
 	vaultAuthMethod := cCtx.String("vault-auth-method")
 	vaultRole := cCtx.String("vault-kubernetes-role")
+	vaultAuthMountPath := cCtx.String("vault-kubernetes-auth-path")
 	vaultJwtPath := cCtx.String("vault-kubernetes-jwt-path")
 
 	logTags := map[string]string{
@@ -260,13 +267,14 @@ func runCli(cCtx *cli.Context) error {
 		}
 
 		vaultConfig := secrets.VaultConfig{
-			Address:      vaultAddress,
-			Token:        vaultToken,
-			SecretPrefix: vaultSecretPath,
-			MountPath:    vaultMountPath,
-			AuthMethod:   vaultAuthMethod,
-			Role:         vaultRole,
-			Jwt:          vaultJwt,
+			Address:       vaultAddress,
+			Token:         vaultToken,
+			SecretPrefix:  vaultSecretPath,
+			MountPath:     vaultMountPath,
+			AuthMethod:    vaultAuthMethod,
+			AuthMountPath: vaultAuthMountPath,
+			Role:          vaultRole,
+			Jwt:           vaultJwt,
 		}
 
 		sm, err = secrets.NewHashicorpVaultService(ctx, log.Logger, vaultConfig)

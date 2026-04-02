@@ -24,9 +24,10 @@ type VaultConfig struct {
 	Token        string // Vault token for authentication (used when AuthMethod=="token")
 	SecretPrefix string // Path prefix for secrets (e.g., "secrets/builder-hub")
 	MountPath    string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
-	AuthMethod   string // "token" (default) or "kubernetes"
-	Role         string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
-	Jwt          string // ServiceAccount JWT for Kubernetes auth (required if AuthMethod=="kubernetes")
+	AuthMethod    string // "token" (default) or "kubernetes"
+	AuthMountPath string // Vault auth mount path for Kubernetes auth (e.g., "k8s/eth-l1-prod", defaults to "kubernetes")
+	Role          string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
+	Jwt           string // ServiceAccount JWT for Kubernetes auth (required if AuthMethod=="kubernetes")
 }
 
 func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultConfig) (*hashicorpVaultService, error) {
@@ -56,7 +57,11 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		if cfg.Jwt == "" {
 			return nil, fmt.Errorf("JWT is required for Kubernetes auth")
 		}
-		k8sAuth, err := authkubernetes.NewKubernetesAuth(cfg.Role, authkubernetes.WithServiceAccountToken(cfg.Jwt))
+		k8sAuthOpts := []authkubernetes.LoginOption{authkubernetes.WithServiceAccountToken(cfg.Jwt)}
+		if cfg.AuthMountPath != "" {
+			k8sAuthOpts = append(k8sAuthOpts, authkubernetes.WithMountPath(cfg.AuthMountPath))
+		}
+		k8sAuth, err := authkubernetes.NewKubernetesAuth(cfg.Role, k8sAuthOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize Kubernetes auth: %w", err)
 		}
