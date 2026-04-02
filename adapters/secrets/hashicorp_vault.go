@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
+	"strings"
 
 	vault "github.com/hashicorp/vault/api"
 	authkubernetes "github.com/hashicorp/vault/api/auth/kubernetes"
@@ -81,14 +81,6 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		client.SetToken(cfg.Token)
 	}
 
-	// Verify connection by attempting a read (404 is fine — path may not exist yet)
-	verifyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	_, verifyErr := client.KVv2(cfg.MountPath).Get(verifyCtx, cfg.SecretPrefix)
-	if verifyErr != nil && !isVault404(verifyErr) {
-		return nil, fmt.Errorf("failed to verify Vault connection: %w", verifyErr)
-	}
-
 	return svc, nil
 }
 
@@ -113,7 +105,11 @@ func (s *hashicorpVaultService) watchTokenRenewal(ctx context.Context, watcher *
 
 func isVault404(err error) bool {
 	var responseErr *vault.ResponseError
-	return errors.As(err, &responseErr) && responseErr.StatusCode == 404
+	if errors.As(err, &responseErr) && responseErr.StatusCode == 404 {
+		return true
+	}
+	// KVv2().Get() wraps 404 as "secret not found" without a ResponseError
+	return strings.Contains(err.Error(), "secret not found")
 }
 
 func (s *hashicorpVaultService) secretKVPath(builderName string) string {
