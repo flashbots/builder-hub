@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	vault "github.com/hashicorp/vault/api"
 	authkubernetes "github.com/hashicorp/vault/api/auth/kubernetes"
@@ -105,11 +104,7 @@ func (s *hashicorpVaultService) watchTokenRenewal(ctx context.Context, watcher *
 
 func isVault404(err error) bool {
 	var responseErr *vault.ResponseError
-	if errors.As(err, &responseErr) && responseErr.StatusCode == 404 {
-		return true
-	}
-	// KVv2().Get() wraps 404 as "secret not found" without a ResponseError
-	return strings.Contains(err.Error(), "secret not found")
+	return errors.As(err, &responseErr) && responseErr.StatusCode == 404
 }
 
 func (s *hashicorpVaultService) secretKVPath(builderName string) string {
