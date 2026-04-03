@@ -20,10 +20,10 @@ type hashicorpVaultService struct {
 }
 
 type VaultConfig struct {
-	Address      string // Vault server address (e.g., http://localhost:8200)
-	Token        string // Vault token for authentication (used when AuthMethod=="token")
-	SecretPrefix string // Path prefix for secrets (e.g., "secrets/builder-hub")
-	MountPath    string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
+	Address       string // Vault server address (e.g., http://localhost:8200)
+	Token         string // Vault token for authentication (used when AuthMethod=="token")
+	SecretPrefix  string // Path prefix for secrets (e.g., "secrets/builder-hub")
+	MountPath     string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
 	AuthMethod    string // "token" (default) or "kubernetes"
 	AuthMountPath string // Vault auth mount path for Kubernetes auth (e.g., "k8s/eth-l1-prod", defaults to "kubernetes")
 	Role          string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
