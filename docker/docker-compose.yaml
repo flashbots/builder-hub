@@ -98,6 +98,7 @@ services:
       VAULT_KUBERNETES_ROLE: "builder-hub"
       VAULT_KUBERNETES_JWT_PATH: "/var/run/secrets/kubernetes.io/serviceaccount/token"
       VAULT_MOUNT_PATH: "secret"
+      VAULT_KUBERNETES_AUTH_PATH: "k8s/custom"
       VAULT_SECRET_PATH: ""
       POSTGRES_DSN: "postgres://postgres:postgres@db:5432/postgres?sslmode=disable"
       LISTEN_ADDR: "0.0.0.0:8080"

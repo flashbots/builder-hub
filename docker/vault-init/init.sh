@@ -28,11 +28,11 @@ open("/vault-jwt/token", "w").write(token)
 print("SA JWT written to /vault-jwt/token")
 EOF
 
-# Enable Kubernetes auth method
-vault auth enable kubernetes
+# Enable Kubernetes auth method at custom path (matches VAULT_KUBERNETES_AUTH_PATH)
+vault auth enable -path=k8s/custom kubernetes
 
 # Configure Kubernetes auth to use mock-k8s for TokenReview (no real k8s API needed)
-vault write auth/kubernetes/config \
+vault write auth/k8s/custom/config \
     kubernetes_host="http://mock-k8s:8443" \
     disable_iss_validation=true \
     disable_local_ca_jwt=true
@@ -45,7 +45,7 @@ path "secret/*" {
 POLICY
 
 # Create a role for the builder-hub service account
-vault write auth/kubernetes/role/builder-hub \
+vault write auth/k8s/custom/role/builder-hub \
     bound_service_account_names="builder-hub" \
     bound_service_account_namespaces="default" \
     token_policies="default,builder-hub" \
