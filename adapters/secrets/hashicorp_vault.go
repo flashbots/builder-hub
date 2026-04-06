@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	vault "github.com/hashicorp/vault/api"
 	authkubernetes "github.com/hashicorp/vault/api/auth/kubernetes"
@@ -20,13 +19,14 @@ type hashicorpVaultService struct {
 }
 
 type VaultConfig struct {
-	Address      string // Vault server address (e.g., http://localhost:8200)
-	Token        string // Vault token for authentication (used when AuthMethod=="token")
-	SecretPrefix string // Path prefix for secrets (e.g., "secrets/builder-hub")
-	MountPath    string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
-	AuthMethod   string // "token" (default) or "kubernetes"
-	Role         string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
-	Jwt          string // ServiceAccount JWT for Kubernetes auth (required if AuthMethod=="kubernetes")
+	Address       string // Vault server address (e.g., http://localhost:8200)
+	Token         string // Vault token for authentication (used when AuthMethod=="token")
+	SecretPrefix  string // Path prefix for secrets (e.g., "secrets/builder-hub")
+	MountPath     string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
+	AuthMethod    string // "token" (default) or "kubernetes"
+	AuthMountPath string // Vault auth mount path for Kubernetes auth (e.g., "k8s/eth-l1-prod", defaults to "kubernetes")
+	Role          string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
+	Jwt           string // ServiceAccount JWT for Kubernetes auth (required if AuthMethod=="kubernetes")
 }
 
 func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultConfig) (*hashicorpVaultService, error) {
@@ -56,7 +56,11 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		if cfg.Jwt == "" {
 			return nil, fmt.Errorf("JWT is required for Kubernetes auth")
 		}
-		k8sAuth, err := authkubernetes.NewKubernetesAuth(cfg.Role, authkubernetes.WithServiceAccountToken(cfg.Jwt))
+		k8sAuthOpts := []authkubernetes.LoginOption{authkubernetes.WithServiceAccountToken(cfg.Jwt)}
+		if cfg.AuthMountPath != "" {
+			k8sAuthOpts = append(k8sAuthOpts, authkubernetes.WithMountPath(cfg.AuthMountPath))
+		}
+		k8sAuth, err := authkubernetes.NewKubernetesAuth(cfg.Role, k8sAuthOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize Kubernetes auth: %w", err)
 		}
@@ -74,14 +78,6 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 			return nil, errors.New("token is required for vault auth")
 		}
 		client.SetToken(cfg.Token)
-	}
-
-	// Verify connection by attempting a read (404 is fine — path may not exist yet)
-	verifyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	_, verifyErr := client.KVv2(cfg.MountPath).Get(verifyCtx, cfg.SecretPrefix)
-	if verifyErr != nil && !isVault404(verifyErr) {
-		return nil, fmt.Errorf("failed to verify Vault connection: %w", verifyErr)
 	}
 
 	return svc, nil
