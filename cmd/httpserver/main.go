@@ -126,25 +126,25 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "vault-auth-method",
 		Value:   "token",
-		Usage:   "Vault authentication method",
+		Usage:   "Vault authentication method: token, kubernetes, or jwt",
 		EnvVars: []string{"VAULT_AUTH_METHOD"},
 	},
 	&cli.StringFlag{
 		Name:    "vault-kubernetes-role",
 		Value:   "",
-		Usage:   "Vault role name for Kubernetes auth",
+		Usage:   "Vault role name for Kubernetes or JWT auth",
 		EnvVars: []string{"VAULT_KUBERNETES_ROLE"},
 	},
 	&cli.StringFlag{
 		Name:    "vault-kubernetes-auth-path",
 		Value:   "",
-		Usage:   "Vault auth mount path for Kubernetes auth (e.g., 'k8s/custom', defaults to empty value)",
+		Usage:   "Vault auth mount path for Kubernetes or JWT auth (e.g., 'k8s/custom'); defaults to 'kubernetes' for k8s auth, 'jwt' for jwt auth",
 		EnvVars: []string{"VAULT_KUBERNETES_AUTH_PATH"},
 	},
 	&cli.StringFlag{
 		Name:    "vault-kubernetes-jwt-path",
 		Value:   "/var/run/secrets/kubernetes.io/serviceaccount/token",
-		Usage:   "Path to ServiceAccount JWT for Kubernetes auth",
+		Usage:   "Path to ServiceAccount JWT for Kubernetes or JWT auth",
 		EnvVars: []string{"VAULT_KUBERNETES_JWT_PATH"},
 	},
 	&cli.StringFlag{
@@ -257,7 +257,7 @@ func runCli(cCtx *cli.Context) error {
 			"auth_method", vaultAuthMethod)
 
 		var vaultJwt string
-		if vaultAuthMethod == "kubernetes" {
+		if vaultAuthMethod == "kubernetes" || vaultAuthMethod == "jwt" {
 			jwtBytes, err := os.ReadFile(vaultJwtPath)
 			if err != nil {
 				log.Error("failed to read Vault JWT file", "path", vaultJwtPath, "err", err)
