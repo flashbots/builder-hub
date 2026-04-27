@@ -23,10 +23,10 @@ type VaultConfig struct {
 	Token         string // Vault token for authentication (used when AuthMethod=="token")
 	SecretPrefix  string // Path prefix for secrets (e.g., "secrets/builder-hub")
 	MountPath     string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
-	AuthMethod    string // "token" (default) or "kubernetes"
-	AuthMountPath string // Vault auth mount path for Kubernetes auth (e.g., "k8s/eth-l1-prod", defaults to "kubernetes")
-	Role          string // Role name for Kubernetes auth (required if AuthMethod=="kubernetes")
-	Jwt           string // ServiceAccount JWT for Kubernetes auth (required if AuthMethod=="kubernetes")
+	AuthMethod    string // "token" (default), "kubernetes", or "jwt"
+	AuthMountPath string // Vault auth mount path for Kubernetes/JWT auth (e.g., "k8s/eth-l1-prod"); defaults to "kubernetes" for k8s auth, "jwt" for JWT auth
+	Role          string // Role name for Kubernetes/JWT auth (required if AuthMethod is "kubernetes" or "jwt")
+	Jwt           string // ServiceAccount JWT for Kubernetes/JWT auth (required if AuthMethod is "kubernetes" or "jwt")
 }
 
 func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultConfig) (*hashicorpVaultService, error) {
@@ -34,7 +34,7 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		cfg.MountPath = "secret"
 	}
 
-	if cfg.AuthMethod != "token" && cfg.AuthMethod != "kubernetes" && cfg.AuthMethod != "" {
+	if cfg.AuthMethod != "token" && cfg.AuthMethod != "kubernetes" && cfg.AuthMethod != "jwt" && cfg.AuthMethod != "" {
 		return nil, fmt.Errorf("unsupported AuthMethod %s", cfg.AuthMethod)
 	}
 
@@ -52,7 +52,8 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 		log:        log,
 	}
 
-	if cfg.AuthMethod == "kubernetes" {
+	switch cfg.AuthMethod {
+	case "kubernetes":
 		if cfg.Jwt == "" {
 			return nil, fmt.Errorf("JWT is required for Kubernetes auth")
 		}
@@ -73,7 +74,36 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 			return nil, fmt.Errorf("failed to create token lifetime watcher: %w", err)
 		}
 		go svc.watchTokenRenewal(ctx, watcher)
-	} else {
+
+	case "jwt":
+		if cfg.Jwt == "" {
+			return nil, fmt.Errorf("JWT is required for JWT auth")
+		}
+		if cfg.Role == "" {
+			return nil, fmt.Errorf("role is required for JWT auth")
+		}
+		mount := cfg.AuthMountPath
+		if mount == "" {
+			mount = "jwt"
+		}
+		authInfo, err := client.Logical().WriteWithContext(ctx, fmt.Sprintf("auth/%s/login", mount), map[string]interface{}{
+			"role": cfg.Role,
+			"jwt":  cfg.Jwt,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("JWT auth failed: %w", err)
+		}
+		if authInfo == nil || authInfo.Auth == nil {
+			return nil, fmt.Errorf("JWT auth returned no authentication info")
+		}
+		client.SetToken(authInfo.Auth.ClientToken)
+		watcher, err := client.NewLifetimeWatcher(&vault.LifetimeWatcherInput{Secret: authInfo})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create token lifetime watcher: %w", err)
+		}
+		go svc.watchTokenRenewal(ctx, watcher)
+
+	default:
 		if cfg.Token == "" {
 			return nil, errors.New("token is required for vault auth")
 		}
