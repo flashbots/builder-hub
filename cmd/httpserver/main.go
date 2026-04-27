@@ -138,7 +138,7 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "vault-kubernetes-auth-path",
 		Value:   "",
-		Usage:   "Vault auth mount path for Kubernetes or JWT auth (e.g., 'k8s/custom'); defaults to 'kubernetes' for k8s auth, 'jwt' for jwt auth",
+		Usage:   "Vault auth mount path for Kubernetes or JWT auth (e.g., 'k8s/custom'); defaults to 'kubernetes' for k8s auth, 'jwt' for JWT auth",
 		EnvVars: []string{"VAULT_KUBERNETES_AUTH_PATH"},
 	},
 	&cli.StringFlag{

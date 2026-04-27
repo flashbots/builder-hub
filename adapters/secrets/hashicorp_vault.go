@@ -24,7 +24,7 @@ type VaultConfig struct {
 	SecretPrefix  string // Path prefix for secrets (e.g., "secrets/builder-hub")
 	MountPath     string // Vault KV v2 mount path (e.g., "secret", defaults to "secret")
 	AuthMethod    string // "token" (default), "kubernetes", or "jwt"
-	AuthMountPath string // Vault auth mount path for Kubernetes/JWT auth (e.g., "k8s/eth-l1-prod"); defaults to "kubernetes" for k8s auth, "jwt" for jwt auth
+	AuthMountPath string // Vault auth mount path for Kubernetes/JWT auth (e.g., "k8s/eth-l1-prod"); defaults to "kubernetes" for k8s auth, "jwt" for JWT auth
 	Role          string // Role name for Kubernetes/JWT auth (required if AuthMethod is "kubernetes" or "jwt")
 	Jwt           string // ServiceAccount JWT for Kubernetes/JWT auth (required if AuthMethod is "kubernetes" or "jwt")
 }
@@ -80,7 +80,7 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 			return nil, fmt.Errorf("JWT is required for JWT auth")
 		}
 		if cfg.Role == "" {
-			return nil, fmt.Errorf("Role is required for JWT auth")
+			return nil, fmt.Errorf("role is required for JWT auth")
 		}
 		mount := cfg.AuthMountPath
 		if mount == "" {
@@ -91,10 +91,10 @@ func NewHashicorpVaultService(ctx context.Context, log *slog.Logger, cfg VaultCo
 			"jwt":  cfg.Jwt,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("jwt auth failed: %w", err)
+			return nil, fmt.Errorf("JWT auth failed: %w", err)
 		}
 		if authInfo == nil || authInfo.Auth == nil {
-			return nil, fmt.Errorf("jwt auth returned no authentication info")
+			return nil, fmt.Errorf("JWT auth returned no authentication info")
 		}
 		client.SetToken(authInfo.Auth.ClientToken)
 		watcher, err := client.NewLifetimeWatcher(&vault.LifetimeWatcherInput{Secret: authInfo})
