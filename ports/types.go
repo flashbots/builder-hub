@@ -31,6 +31,7 @@ type BuilderWithServiceCreds struct {
 type ServiceCred struct {
 	TLSCert     string          `json:"tls_cert,omitempty"`
 	ECDSAPubkey *common.Address `json:"ecdsa_pubkey_address,omitempty"`
+	Region      string          `json:"region,omitempty"`
 }
 
 // MarshalJSON is a custom json marshaller. Unfortunately, there seems to be no way to inline map[string]Service when marshalling
@@ -110,6 +111,7 @@ func fromDomainBuilderWithServices(builder domain.BuilderWithServices) BuilderWi
 		b.ServiceCreds[v.Service] = ServiceCred{
 			TLSCert:     v.TLSCert,
 			ECDSAPubkey: v.ECDSAPubKey,
+			Region:      v.Region,
 		}
 	}
 

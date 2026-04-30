@@ -20,7 +20,7 @@ type BuilderHubService interface {
 	GetActiveBuilders(ctx context.Context, network string) ([]domain.BuilderWithServices, error)
 	VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error)
 	GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error)
-	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error
+	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType, region string) error
 	LogEvent(ctx context.Context, eventName, builderName, name string) error
 }
 type BuilderHubHandler struct {
@@ -279,7 +279,7 @@ func (bhs *BuilderHubHandler) RegisterCredentials(w http.ResponseWriter, r *http
 		ecdsaPubkey = sc.ECDSAPubkey.Bytes()
 	}
 
-	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, tlsCert, ecdsaPubkey, measurementName, authData.AttestationType)
+	err = bhs.builderHubService.RegisterCredentialsForBuilder(r.Context(), builder.Name, service, tlsCert, ecdsaPubkey, measurementName, authData.AttestationType, sc.Region)
 	if err != nil {
 		bhs.log.Error("Failed to register credentials", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)

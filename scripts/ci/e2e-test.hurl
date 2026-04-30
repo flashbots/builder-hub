@@ -100,7 +100,8 @@ HTTP 200
 POST http://localhost:8888/api/l1-builder/v1/register_credentials/orderflow_proxy
 {
   "ecdsa_pubkey_address": "0x321f3426eEc20DE1910af1CD595c4DD83BEA0BA5",
-  "tls_cert": "abcdefghijklmnopqrstuvwxyz"
+  "tls_cert": "abcdefghijklmnopqrstuvwxyz",
+  "region": "europe"
 }
 HTTP 200
 
@@ -125,6 +126,7 @@ HTTP 200
 [Asserts]
 jsonpath "$.[0].orderflow_proxy.tls_cert" == "abcdefghijklmnopqrstuvwxyz"
 jsonpath "$.[0].orderflow_proxy.ecdsa_pubkey_address" == "0x321f3426eec20de1910af1cd595c4dd83bea0ba5"
+jsonpath "$.[0].orderflow_proxy.region" == "europe"
 jsonpath "$.[0].rbuilder.ecdsa_pubkey_address" == "0x321f3426eec20de1910af1cd595c4dd83bea0ba5"
 jsonpath "$.[0].instance.tls_cert" == "1234567890"
 jsonpath "$.[0].foobar123.tls_cert" == "1234567890"

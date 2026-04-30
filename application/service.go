@@ -16,7 +16,7 @@ type BuilderDataAccessor interface {
 	GetActiveMeasurementsByType(ctx context.Context, attestationType string) ([]domain.Measurement, error)
 	GetBuilderByIP(ip net.IP) (*domain.Builder, error)
 	GetActiveConfigForBuilder(ctx context.Context, builderName string) (json.RawMessage, error)
-	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error
+	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType, region string) error
 	LogEvent(ctx context.Context, eventName, builderName, name string) error
 }
 
@@ -47,8 +47,8 @@ func (b *BuilderHub) LogEvent(ctx context.Context, eventName, builderName, name 
 	return b.dataAccessor.LogEvent(ctx, eventName, builderName, name)
 }
 
-func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error {
-	return b.dataAccessor.RegisterCredentialsForBuilder(ctx, builderName, service, tlsCert, ecdsaPubKey, measurementName, attestationType)
+func (b *BuilderHub) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType, region string) error {
+	return b.dataAccessor.RegisterCredentialsForBuilder(ctx, builderName, service, tlsCert, ecdsaPubKey, measurementName, attestationType, region)
 }
 
 func (b *BuilderHub) GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error) {

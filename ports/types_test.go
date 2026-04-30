@@ -35,6 +35,24 @@ func TestServiceCredsNil(t *testing.T) {
 	}
 }
 
+func TestUnmarshalBuildersWithRegion(t *testing.T) {
+	val := []byte(`[{"ip":"127.0.0.1","name":"test_builder_1","rbuilder":{"tls_cert":"test-cert","ecdsa_pubkey_address":"0x1234567890123456789012345678901234567890","region":"us-east-1"}}]`)
+	var builders []BuilderWithServiceCreds
+	err := json.Unmarshal(val, &builders)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal builders: %v", err)
+	}
+	if len(builders) != 1 {
+		t.Fatal("Expected 1 builder")
+	}
+	if builders[0].ServiceCreds["rbuilder"].Region != "us-east-1" {
+		t.Errorf("Expected region us-east-1, got %s", builders[0].ServiceCreds["rbuilder"].Region)
+	}
+	if builders[0].ServiceCreds["rbuilder"].TLSCert != "test-cert" {
+		t.Error("Failed to unmarshal TLS cert")
+	}
+}
+
 func TestUnmarshalBuilders(t *testing.T) {
 	val := []byte(`[{"ip":"127.0.0.1","name":"test_builder_1","rbuilder":{"tls_cert":"test-cert-no-validation","ecdsa_pubkey_address":"0x1234567890123456789012345678901234567890"}}]`)
 	var builders []BuilderWithServiceCreds

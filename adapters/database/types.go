@@ -84,6 +84,7 @@ type ServiceCredential struct {
 	Service     string
 	TLSCert     sql.NullString
 	ECDSAPubKey []byte
+	Region      string
 }
 
 func toDomainBuilderWithCredentials(builder BuilderWithCredentials) (*domain.BuilderWithServices, error) {
@@ -104,6 +105,7 @@ func toDomainBuilderWithCredentials(builder BuilderWithCredentials) (*domain.Bui
 			TLSCert:     cred.TLSCert.String,
 			ECDSAPubKey: domain.Bytes2Address(cred.ECDSAPubKey),
 			Service:     cred.Service,
+			Region:      cred.Region,
 		})
 	}
 	return &s, nil

@@ -68,6 +68,7 @@ type BuilderServices struct {
 	TLSCert     string
 	ECDSAPubKey *common.Address
 	Service     string
+	Region      string
 }
 
 func Bytes2Address(b []byte) *common.Address {
