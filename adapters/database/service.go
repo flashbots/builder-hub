@@ -90,7 +90,7 @@ func (s *Service) GetActiveMeasurements(ctx context.Context) ([]domain.Measureme
 
 // RegisterCredentialsForBuilder registers new credentials for a builder, deprecating all previous credentials
 // It uses hash and attestation_type to fetch the corresponding measurement_id via a subquery.
-func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType string) error {
+func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType, region string) error {
 	// Start a transaction
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -118,11 +118,12 @@ func (s *Service) RegisterCredentialsForBuilder(ctx context.Context, builderName
 
 	_, err = tx.Exec(`
         INSERT INTO service_credential_registrations
-        (builder_name, service, tls_cert, ecdsa_pubkey, is_active, measurement_id)
+        (builder_name, service, tls_cert, ecdsa_pubkey, is_active, measurement_id, region)
         VALUES ($1, $2, $3, $4, true,
-            (SELECT id FROM measurements_whitelist WHERE name = $5 AND attestation_type = $6)
+            (SELECT id FROM measurements_whitelist WHERE name = $5 AND attestation_type = $6),
+            $7
         )
-    `, builderName, service, nullableTLSCert, ecdsaPubKey, measurementName, attestationType)
+    `, builderName, service, nullableTLSCert, ecdsaPubKey, measurementName, attestationType, region)
 	if err != nil {
 		return fmt.Errorf("failed to insert credentials for builder %s: %w", builderName, err)
 	}
@@ -156,7 +157,8 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
             b.dns_name,
             scr.service,
             scr.tls_cert,
-            scr.ecdsa_pubkey
+            scr.ecdsa_pubkey,
+            scr.region
         FROM
             builders b
         LEFT JOIN
@@ -180,8 +182,9 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
 		var tlsCert sql.NullString
 		var dnsName sql.NullString
 		var ecdsaPubKey []byte
+		var region sql.NullString
 
-		err := rows.Scan(&builderName, &ipAddress, &dnsName, &service, &tlsCert, &ecdsaPubKey)
+		err := rows.Scan(&builderName, &ipAddress, &dnsName, &service, &tlsCert, &ecdsaPubKey, &region)
 		if err != nil {
 			return nil, err
 		}
@@ -201,6 +204,7 @@ func (s *Service) GetActiveBuildersWithServiceCredentials(ctx context.Context, n
 				Service:     service.String,
 				TLSCert:     tlsCert,
 				ECDSAPubKey: ecdsaPubKey,
+				Region:      region.String,
 			})
 		}
 	}
