@@ -168,7 +168,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          file: Dockerfile
+          file: ./docker/mock-proxy/Dockerfile
           context: ./docker/mock-proxy
           push: true
           platforms: linux/amd64,linux/arm64
