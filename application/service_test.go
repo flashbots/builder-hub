@@ -160,6 +160,22 @@ func TestValidateMeasurement(t *testing.T) {
 		_, err := validateMeasurement(legacyMeasurements(measurement), templates)
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
+
+	t.Run("legacy header does not match image policy", func(t *testing.T) {
+		hashes := testImageHashes("a")
+		imageTemplates := []domain.Measurement{
+			{
+				Name:            "portable-image",
+				AttestationType: "dcap-tdx",
+				DcapImageHashes: &hashes,
+			},
+		}
+
+		_, err := validateMeasurement(legacyMeasurements(map[string]string{
+			"0": strings.Repeat("a", 96),
+		}), imageTemplates)
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
 }
 
 func TestCheckExpectedMeasurementRegisters(t *testing.T) {

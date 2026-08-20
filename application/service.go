@@ -250,6 +250,13 @@ func equalImageHashes(left, right *domain.DcapImageHashes) bool {
 // validates that all fields from measurementTemplate are the same in measurement.
 // For each field, the measurement value must match at least one of the expected values (OR semantics).
 func checkMeasurement(measurement map[string]string, measurementTemplate domain.Measurement) bool {
+	// Legacy headers contain observed register values and cannot represent an
+	// image-hash policy. Without this guard, the loop below could succeed when
+	// it shouldn't.
+	if measurementTemplate.DcapImageHashes != nil {
+		return false
+	}
+
 	for k, v := range measurementTemplate.Measurement {
 		val, ok := measurement[k]
 		if !ok {
@@ -262,7 +269,7 @@ func checkMeasurement(measurement map[string]string, measurementTemplate domain.
 	return true
 }
 
-// matchesAnyExpected returns true if the value matches any of the expected values.
+// matchesAnyExpected returns true if the value matches any of the expected values
 func matchesAnyExpected(value string, expected []string) bool {
 	for _, exp := range expected {
 		if value == exp {
