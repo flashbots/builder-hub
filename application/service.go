@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 
 	"github.com/flashbots/builder-hub/domain"
 )
@@ -63,7 +65,7 @@ func (b *BuilderHub) GetConfigWithSecrets(ctx context.Context, builderName strin
 	return secr, nil
 }
 
-func (b *BuilderHub) VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error) {
+func (b *BuilderHub) VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement domain.SuppliedMeasurements, attestationType string) (*domain.Builder, string, error) {
 	measurements, err := b.dataAccessor.GetActiveMeasurementsByType(ctx, attestationType)
 	if err != nil {
 		return nil, "", fmt.Errorf("failing to fetch corresponding measurement data %s %w", attestationType, err)
@@ -81,13 +83,168 @@ func (b *BuilderHub) VerifyIPAndMeasurements(ctx context.Context, ip net.IP, mea
 	return builder, measurementName, nil
 }
 
-func validateMeasurement(measurement map[string]string, measurementTemplate []domain.Measurement) (string, error) {
+func validateMeasurement(measurement domain.SuppliedMeasurements, measurementTemplate []domain.Measurement) (string, error) {
 	for _, m := range measurementTemplate {
-		if checkMeasurement(measurement, m) {
+		matched := false
+		if measurement.Type == domain.ExpectedMeasurementLegacy {
+			matched = checkMeasurement(measurement.Legacy, m)
+		} else {
+			matched = checkExpectedMeasurement(measurement, m)
+		}
+		if matched {
 			return m.Name, nil
 		}
 	}
 	return "", domain.ErrNotFound
+}
+
+func checkExpectedMeasurement(measurement domain.SuppliedMeasurements, template domain.Measurement) bool {
+	expectedType, ok := expectedMeasurementType(template)
+	if !ok || measurement.Type != expectedType {
+		return false
+	}
+
+	switch expectedType {
+	case domain.ExpectedMeasurementDCAP, domain.ExpectedMeasurementAzure:
+		supplied, ok := normalizeSuppliedRegisters(measurement.Registers, template.AttestationType)
+		if !ok {
+			return false
+		}
+		expected, ok := normalizeExpectedRegisters(template.Measurement, template.AttestationType)
+		return ok && equalRegisterSets(supplied, expected)
+	case domain.ExpectedMeasurementImage:
+		return equalImageHashes(measurement.DcapImageHashes, template.DcapImageHashes)
+	case domain.ExpectedMeasurementNoAttestation:
+		return true
+	default:
+		return false
+	}
+}
+
+func expectedMeasurementType(template domain.Measurement) (domain.ExpectedMeasurementType, bool) {
+	if template.DcapImageHashes != nil {
+		if template.AttestationType == "dcap-tdx" || template.AttestationType == "gcp-tdx" {
+			return domain.ExpectedMeasurementImage, true
+		}
+		return "", false
+	}
+
+	switch template.AttestationType {
+	case "dcap-tdx", "gcp-tdx":
+		return domain.ExpectedMeasurementDCAP, true
+	case "azure-tdx":
+		return domain.ExpectedMeasurementAzure, true
+	case "none":
+		return domain.ExpectedMeasurementNoAttestation, true
+	default:
+		return "", false
+	}
+}
+
+func normalizeSuppliedRegisters(registers map[string][]string, attestationType string) (map[string]map[string]struct{}, bool) {
+	normalized := make(map[string]map[string]struct{}, len(registers))
+	for key, values := range registers {
+		canonical, ok := canonicalRegisterKey(key, attestationType)
+		if !ok || len(values) == 0 {
+			return nil, false
+		}
+		if _, duplicate := normalized[canonical]; duplicate {
+			return nil, false
+		}
+		normalized[canonical] = stringSet(values)
+	}
+	return normalized, true
+}
+
+func normalizeExpectedRegisters(registers map[string]domain.SingleMeasurement, attestationType string) (map[string]map[string]struct{}, bool) {
+	normalized := make(map[string]map[string]struct{}, len(registers))
+	for key, measurement := range registers {
+		canonical, ok := canonicalRegisterKey(key, attestationType)
+		values := measurement.GetExpectedValues()
+		if !ok || len(values) == 0 {
+			return nil, false
+		}
+		if _, duplicate := normalized[canonical]; duplicate {
+			return nil, false
+		}
+		normalized[canonical] = stringSet(values)
+	}
+	return normalized, true
+}
+
+func canonicalRegisterKey(key, attestationType string) (string, bool) {
+	switch attestationType {
+	case "dcap-tdx", "gcp-tdx":
+		if index, err := strconv.Atoi(key); err == nil {
+			if index >= 0 && index <= 4 {
+				return strconv.Itoa(index), true
+			}
+			return "", false
+		}
+		switch strings.ToLower(key) {
+		case "mrtd":
+			return "0", true
+		case "rtmr0":
+			return "1", true
+		case "rtmr1":
+			return "2", true
+		case "rtmr2":
+			return "3", true
+		case "rtmr3":
+			return "4", true
+		default:
+			return "", false
+		}
+	case "azure-tdx":
+		indexString := key
+		if len(key) >= 3 && strings.EqualFold(key[:3], "pcr") {
+			indexString = key[3:]
+		}
+		index, err := strconv.Atoi(indexString)
+		if err != nil || index < 0 || index > 23 {
+			return "", false
+		}
+		return strconv.Itoa(index), true
+	default:
+		return "", false
+	}
+}
+
+func stringSet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		set[strings.ToLower(value)] = struct{}{}
+	}
+	return set
+}
+
+func equalRegisterSets(left, right map[string]map[string]struct{}) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, leftValues := range left {
+		rightValues, ok := right[key]
+		if !ok || len(leftValues) != len(rightValues) {
+			return false
+		}
+		for value := range leftValues {
+			if _, ok := rightValues[value]; !ok {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func equalImageHashes(left, right *domain.DcapImageHashes) bool {
+	if left == nil || right == nil {
+		return false
+	}
+	return strings.EqualFold(left.UKIAuthenticode, right.UKIAuthenticode) &&
+		strings.EqualFold(left.KernelAuthenticode, right.KernelAuthenticode) &&
+		strings.EqualFold(left.CmdlineHash, right.CmdlineHash) &&
+		strings.EqualFold(left.InitrdHash, right.InitrdHash) &&
+		strings.EqualFold(left.GPTDiskGUIDHash, right.GPTDiskGUIDHash)
 }
 
 // validates that all fields from measurementTemplate are the same in measurement.

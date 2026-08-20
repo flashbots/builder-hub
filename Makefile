@@ -118,7 +118,7 @@ db-dump: ## Dump the database contents to file 'database.dump'
 .PHONY: dev-db-setup
 dev-db-setup: ## Create the basic database entries for testing and development
 	@printf "$(BLUE)Create the allow-all measurements $(NC)\n"
-	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "test","measurements": {}}'
+	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/measurements --data '{"measurement_id": "test1","attestation_type": "dcap-tdx","measurements": {}}'
 
 	@printf "$(BLUE)Enable the measurements $(NC)\n"
 	$(CURL) $(CURL_AUTH) --request POST --url http://localhost:8081/api/admin/v1/measurements/activation/test1 --data '{"enabled": true}'

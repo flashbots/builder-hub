@@ -39,7 +39,7 @@ func (s *Service) Close() error {
 
 func (s *Service) GetActiveMeasurementsByType(ctx context.Context, attestationType string) ([]domain.Measurement, error) {
 	var measurements []Measurement
-	err := s.DB.SelectContext(ctx, &measurements, `SELECT * FROM measurements_whitelist WHERE is_active=true AND attestation_type=$1`, attestationType)
+	err := s.DB.SelectContext(ctx, &measurements, `SELECT * FROM measurements_whitelist WHERE is_active=true AND attestation_type=$1 ORDER BY id`, attestationType)
 	var domainMeasurements []domain.Measurement
 	for _, m := range measurements {
 		domainM, err := convertMeasurementToDomain(m)
@@ -76,7 +76,7 @@ func (s *Service) GetBuilderByIP(ip net.IP) (*domain.Builder, error) {
 // GetActiveMeasurements retrieves all measurements
 func (s *Service) GetActiveMeasurements(ctx context.Context) ([]domain.Measurement, error) {
 	var measurements []Measurement
-	err := s.DB.SelectContext(ctx, &measurements, `SELECT * FROM measurements_whitelist WHERE is_active=true`)
+	err := s.DB.SelectContext(ctx, &measurements, `SELECT * FROM measurements_whitelist WHERE is_active=true ORDER BY id`)
 	var domainMeasurements []domain.Measurement
 	for _, m := range measurements {
 		domainM, err := convertMeasurementToDomain(m)
@@ -245,14 +245,29 @@ func (s *Service) LogEvent(ctx context.Context, eventName, builderName, name str
 }
 
 func (s *Service) AddMeasurement(ctx context.Context, measurement domain.Measurement, enabled bool) error {
-	bts, err := json.Marshal(measurement.Measurement)
-	if err != nil {
-		return err
+	var measurementJSON any
+	var imageHashesJSON any
+	if measurement.DcapImageHashes != nil {
+		bts, err := json.Marshal(measurement.DcapImageHashes)
+		if err != nil {
+			return err
+		}
+		imageHashesJSON = bts
+	} else {
+		measurements := measurement.Measurement
+		if measurements == nil {
+			measurements = make(map[string]domain.SingleMeasurement)
+		}
+		bts, err := json.Marshal(measurements)
+		if err != nil {
+			return err
+		}
+		measurementJSON = bts
 	}
-	_, err = s.DB.ExecContext(ctx, `
-		INSERT INTO measurements_whitelist (name, attestation_type, measurement, is_active)
-		VALUES ($1, $2, $3, $4)
-	`, measurement.Name, measurement.AttestationType, bts, enabled)
+	_, err := s.DB.ExecContext(ctx, `
+		INSERT INTO measurements_whitelist (name, attestation_type, measurement, dcap_image_hashes, is_active)
+		VALUES ($1, $2, $3, $4, $5)
+	`, measurement.Name, measurement.AttestationType, measurementJSON, imageHashesJSON, enabled)
 	return err
 }
 

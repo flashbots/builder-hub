@@ -10,23 +10,31 @@ import (
 )
 
 type Measurement struct {
-	ID              int             `db:"id"`
-	Name            string          `db:"name"`
-	AttestationType string          `db:"attestation_type"`
-	Measurement     json.RawMessage `db:"measurement"`
-	IsActive        bool            `db:"is_active"`
-	CreatedAt       time.Time       `db:"created_at"`
-	UpdatedAt       time.Time       `db:"updated_at"`
-	DeprecatedAt    *time.Time      `db:"deprecated_at"`
+	ID              int            `db:"id"`
+	Name            string         `db:"name"`
+	AttestationType string         `db:"attestation_type"`
+	Measurement     sql.NullString `db:"measurement"`
+	DcapImageHashes sql.NullString `db:"dcap_image_hashes"`
+	IsActive        bool           `db:"is_active"`
+	CreatedAt       time.Time      `db:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"`
+	DeprecatedAt    *time.Time     `db:"deprecated_at"`
 }
 
 func convertMeasurementToDomain(measurement Measurement) (*domain.Measurement, error) {
 	var m domain.Measurement
 	m.AttestationType = measurement.AttestationType
-	m.Measurement = make(map[string]domain.SingleMeasurement)
-	err := json.Unmarshal(measurement.Measurement, &m.Measurement)
-	if err != nil {
-		return nil, err
+	if measurement.Measurement.Valid && measurement.Measurement.String != "null" {
+		m.Measurement = make(map[string]domain.SingleMeasurement)
+		if err := json.Unmarshal([]byte(measurement.Measurement.String), &m.Measurement); err != nil {
+			return nil, err
+		}
+	}
+	if measurement.DcapImageHashes.Valid && measurement.DcapImageHashes.String != "null" {
+		m.DcapImageHashes = new(domain.DcapImageHashes)
+		if err := json.Unmarshal([]byte(measurement.DcapImageHashes.String), m.DcapImageHashes); err != nil {
+			return nil, err
+		}
 	}
 	m.Name = measurement.Name
 	return &m, nil

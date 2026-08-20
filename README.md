@@ -207,6 +207,19 @@ Response: Array with currently allowed measurement JSONs
 
 [testdata/get-measurements.json](https://github.com/flashbots/builder-config-hub/blob/main/testdata/get-measurements.json)
 
+Authenticated instance requests receive two headers from the attestation proxy:
+
+- `X-Flashbots-Attestation-Type`, containing `dcap-tdx`, `gcp-tdx`, `azure-tdx`, or `none`.
+- `X-Flashbots-Measurement`, containing the expected policy selected by the proxy.
+
+For example, a DCAP policy is represented as compact JSON with an array of accepted values per register:
+
+```json
+{"type":"dcap","measurements":{"0":["<MRTD SHA-384>"],"3":["<RTMR2 SHA-384>"]}}
+```
+
+Portable image policies use `type: "image"`; `no_attestation` has no `measurements` field. Legacy headers containing a plain register-to-string object remain accepted during migration.
+
 ---
 
 ## Admin Endpoints
@@ -250,6 +263,22 @@ To allow _any_ measurement, use an empty measurements field:
     "measurement_id": "test-blanket-allow",
     "attestation_type": "azure-tdx",
     "measurements": {}
+}
+```
+
+Portable DCAP policies use image-component hashes instead of register values. They are supported for both `dcap-tdx` and `gcp-tdx`; `dcap_image_hashes` and `measurements` cannot be used together.
+
+```json
+{
+  "measurement_id": "portable-image-v1",
+  "attestation_type": "dcap-tdx",
+  "dcap_image_hashes": {
+    "uki_authenticode": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "kernel_authenticode": "222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222",
+    "cmdline_hash": "333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333",
+    "initrd_hash": "444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444",
+    "gpt_disk_guid_hash": "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+  }
 }
 ```
 

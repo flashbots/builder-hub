@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/flashbots/builder-hub/domain"
@@ -46,6 +47,36 @@ func TestGetBuilder(t *testing.T) {
 			require.Len(t, whitelist, 0)
 		})
 	})
+}
+
+func TestPortableMeasurement(t *testing.T) {
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
+	dbService, err := NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	require.NoError(t, err)
+	_, err = dbService.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")
+	require.NoError(t, err)
+
+	hashes := &domain.DcapImageHashes{
+		UKIAuthenticode:    strings.Repeat("1", 96),
+		KernelAuthenticode: strings.Repeat("2", 96),
+		CmdlineHash:        strings.Repeat("3", 96),
+		InitrdHash:         strings.Repeat("4", 96),
+		GPTDiskGUIDHash:    strings.Repeat("5", 96),
+	}
+	err = dbService.AddMeasurement(context.Background(), domain.Measurement{
+		Name:            "portable-image",
+		AttestationType: "dcap-tdx",
+		DcapImageHashes: hashes,
+	}, true)
+	require.NoError(t, err)
+
+	measurements, err := dbService.GetActiveMeasurementsByType(context.Background(), "dcap-tdx")
+	require.NoError(t, err)
+	require.Len(t, measurements, 1)
+	require.Nil(t, measurements[0].Measurement)
+	require.Equal(t, hashes, measurements[0].DcapImageHashes)
 }
 
 func TestAdminFlow(t *testing.T) {

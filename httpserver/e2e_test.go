@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -47,7 +48,7 @@ func TestCreateMultipleNetworkBuilders(t *testing.T) {
 
 	measurement := ports.Measurement{
 		Name:            "test-measurement-1",
-		AttestationType: "test-attestation-type-1",
+		AttestationType: "azure-tdx",
 		Measurements: map[string]domain.SingleMeasurement{
 			"8": {
 				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -111,6 +112,20 @@ func TestCreateMultipleNetworkBuilders(t *testing.T) {
 		}
 	})
 
+	t.Run("Auth active builders with expected policy header", func(t *testing.T) {
+		resp := make([]ports.BuilderWithServiceCreds, 0)
+		header := map[string]any{
+			"type": "azure",
+			"measurements": map[string][]string{
+				"8":  {"0000000000000000000000000000000000000000000000000000000000000000"},
+				"11": {"efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"},
+			},
+		}
+		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &resp, measurement.AttestationType, header, "127.0.0.1")
+		require.Equal(t, http.StatusOK, status)
+		require.Len(t, resp, 3)
+	})
+
 	t.Run("Auth active builders other network", func(t *testing.T) {
 		resp := make([]ports.BuilderWithServiceCreds, 0)
 		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &resp, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.1.1")
@@ -169,7 +184,7 @@ func TestAuthInteractionFlow(t *testing.T) {
 	createBuilder(t, s, builderName, ip, domain.ProductionNetwork)
 	measurement := ports.Measurement{
 		Name:            "test-measurement-1",
-		AttestationType: "test-attestation-type-1",
+		AttestationType: "azure-tdx",
 		Measurements: map[string]domain.SingleMeasurement{
 			"8": {
 				Expected: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -180,10 +195,17 @@ func TestAuthInteractionFlow(t *testing.T) {
 		},
 	}
 	createMeasurement(t, s, measurement)
+	expectedHeader := map[string]any{
+		"type": "azure",
+		"measurements": map[string][]string{
+			"8":  {"0000000000000000000000000000000000000000000000000000000000000000"},
+			"11": {"efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"},
+		},
+	}
 
 	t.Run("GetConfig", func(t *testing.T) {
 		resp := make(map[string]string)
-		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/configuration", nil, &resp, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.0.1")
+		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/configuration", nil, &resp, measurement.AttestationType, expectedHeader, "127.0.0.1")
 		require.Equal(t, http.StatusOK, status)
 		require.Equal(t, builderName+"_test_value_1", resp["test_key_1"])
 		require.Equal(t, builderName+"_test_secret_value", resp["test_secret_1"])
@@ -210,12 +232,12 @@ func TestAuthInteractionFlow(t *testing.T) {
 			ECDSAPubkey: &addr,
 			Region:      "us-east-1",
 		}
-		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodPost, "/api/l1-builder/v1/register_credentials/rbuilder", sc, nil, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.0.1")
+		status, _ := execRequestAuth(t, s.GetRouter(), http.MethodPost, "/api/l1-builder/v1/register_credentials/rbuilder", sc, nil, measurement.AttestationType, expectedHeader, "127.0.0.1")
 		require.Equal(t, http.StatusOK, status)
 	})
 	t.Run("CheckCredentials", func(t *testing.T) {
 		resp := make([]ports.BuilderWithServiceCreds, 0)
-		sc, bts := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &resp, measurement.AttestationType, map[string]string{"8": "0000000000000000000000000000000000000000000000000000000000000000", "11": "efa43e0beff151b0f251c4abf48152382b1452b4414dbd737b4127de05ca31f7"}, "127.0.0.1")
+		sc, bts := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &resp, measurement.AttestationType, expectedHeader, "127.0.0.1")
 		c := string(bts)
 		fmt.Println(c)
 		require.Equal(t, http.StatusOK, sc)
@@ -226,6 +248,43 @@ func TestAuthInteractionFlow(t *testing.T) {
 		require.Equal(t, "0x1234567890123456789012345678901234567890", resp[0].ServiceCreds["rbuilder"].ECDSAPubkey.String())
 		require.Equal(t, "us-east-1", resp[0].ServiceCreds["rbuilder"].Region)
 	})
+}
+
+func TestPortableImageAuthentication(t *testing.T) {
+	if os.Getenv("RUN_DB_TESTS") != "1" {
+		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
+	}
+
+	s, _, _ := createServer(t)
+	createBuilder(t, s, "portable-builder", "127.0.0.1", domain.ProductionNetwork)
+	hashes := &domain.DcapImageHashes{
+		UKIAuthenticode:    strings.Repeat("1", 96),
+		KernelAuthenticode: strings.Repeat("2", 96),
+		CmdlineHash:        strings.Repeat("3", 96),
+		InitrdHash:         strings.Repeat("4", 96),
+		GPTDiskGUIDHash:    strings.Repeat("5", 96),
+	}
+	measurement := ports.Measurement{
+		Name:            "portable-image",
+		AttestationType: "dcap-tdx",
+		DcapImageHashes: hashes,
+	}
+	createMeasurement(t, s, measurement)
+
+	header := map[string]any{
+		"type":         "image",
+		"measurements": hashes,
+	}
+	var response []ports.BuilderWithServiceCreds
+	status, _ := execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &response, measurement.AttestationType, header, "127.0.0.1")
+	require.Equal(t, http.StatusOK, status)
+	require.Len(t, response, 1)
+
+	badHashes := *hashes
+	badHashes.InitrdHash = strings.Repeat("6", 96)
+	header["measurements"] = &badHashes
+	status, _ = execRequestAuth(t, s.GetRouter(), http.MethodGet, "/api/l1-builder/v1/builders", nil, &response, measurement.AttestationType, header, "127.0.0.1")
+	require.Equal(t, http.StatusForbidden, status)
 }
 
 // createBuilder emulates admin flow to provision a builder
@@ -349,7 +408,7 @@ func execRequestNoAuth(t *testing.T, router http.Handler, method, url string, re
 	return execRequestAuth(t, router, method, url, request, response, "", nil, "")
 }
 
-func execRequestAuth(t *testing.T, router http.Handler, method, url string, request, response any, attestationType string, measurement map[string]string, ip string) (statusCode int, responsePayload []byte) {
+func execRequestAuth(t *testing.T, router http.Handler, method, url string, request, response any, attestationType string, measurement any, ip string) (statusCode int, responsePayload []byte) {
 	t.Helper()
 	rBody, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -358,7 +417,7 @@ func execRequestAuth(t *testing.T, router http.Handler, method, url string, requ
 	if attestationType != "" {
 		tr.Header.Set(ports.AttestationTypeHeader, attestationType)
 	}
-	if len(measurement) > 0 {
+	if measurement != nil {
 		measB, err := json.Marshal(measurement)
 		require.NoError(t, err)
 		tr.Header.Set(ports.MeasurementHeader, string(measB))

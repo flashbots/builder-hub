@@ -18,7 +18,7 @@ import (
 type BuilderHubService interface {
 	GetAllowedMeasurements(ctx context.Context) ([]domain.Measurement, error)
 	GetActiveBuilders(ctx context.Context, network string) ([]domain.BuilderWithServices, error)
-	VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement map[string]string, attestationType string) (*domain.Builder, string, error)
+	VerifyIPAndMeasurements(ctx context.Context, ip net.IP, measurement domain.SuppliedMeasurements, attestationType string) (*domain.Builder, string, error)
 	GetConfigWithSecrets(ctx context.Context, builderName string) ([]byte, error)
 	RegisterCredentialsForBuilder(ctx context.Context, builderName, service, tlsCert string, ecdsaPubKey []byte, measurementName, attestationType, region string) error
 	LogEvent(ctx context.Context, eventName, builderName, name string) error
@@ -34,8 +34,97 @@ func NewBuilderHubHandler(builderHubService BuilderHubService, log *httplog.Logg
 
 type AuthData struct {
 	AttestationType string
-	MeasurementData map[string]string
+	MeasurementData domain.SuppliedMeasurements
 	IP              net.IP
+}
+
+type expectedMeasurementsHeader struct {
+	Type         domain.ExpectedMeasurementType `json:"type"`
+	Measurements json.RawMessage                `json:"measurements"`
+}
+
+func parseMeasurementHeader(value, attestationType string) (domain.SuppliedMeasurements, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(value), &object); err != nil {
+		return domain.SuppliedMeasurements{}, err
+	}
+	if object == nil {
+		return domain.SuppliedMeasurements{}, errors.New("measurement header must be a JSON object")
+	}
+
+	if _, typed := object["type"]; !typed {
+		legacy := make(map[string]string)
+		if err := json.Unmarshal([]byte(value), &legacy); err != nil {
+			return domain.SuppliedMeasurements{}, err
+		}
+		return domain.SuppliedMeasurements{
+			Type:            domain.ExpectedMeasurementLegacy,
+			Registers:       nil,
+			DcapImageHashes: nil,
+			Legacy:          legacy,
+		}, nil
+	}
+
+	var header expectedMeasurementsHeader
+	if err := json.Unmarshal([]byte(value), &header); err != nil {
+		return domain.SuppliedMeasurements{}, err
+	}
+	if !measurementTypeMatchesAttestationType(header.Type, attestationType) {
+		return domain.SuppliedMeasurements{}, fmt.Errorf("measurement type %q does not match attestation type %q", header.Type, attestationType)
+	}
+
+	supplied := domain.SuppliedMeasurements{Type: header.Type}
+	switch header.Type {
+	case domain.ExpectedMeasurementDCAP, domain.ExpectedMeasurementAzure:
+		if len(header.Measurements) == 0 || string(header.Measurements) == "null" {
+			return domain.SuppliedMeasurements{}, errors.New("measurements are missing")
+		}
+		if err := json.Unmarshal(header.Measurements, &supplied.Registers); err != nil {
+			return domain.SuppliedMeasurements{}, err
+		}
+		if supplied.Registers == nil {
+			return domain.SuppliedMeasurements{}, errors.New("measurements must be an object")
+		}
+		for key, values := range supplied.Registers {
+			if len(values) == 0 {
+				return domain.SuppliedMeasurements{}, fmt.Errorf("measurement %q has no expected values", key)
+			}
+		}
+	case domain.ExpectedMeasurementImage:
+		if len(header.Measurements) == 0 || string(header.Measurements) == "null" {
+			return domain.SuppliedMeasurements{}, errors.New("image measurements are missing")
+		}
+		supplied.DcapImageHashes = new(domain.DcapImageHashes)
+		if err := json.Unmarshal(header.Measurements, supplied.DcapImageHashes); err != nil {
+			return domain.SuppliedMeasurements{}, err
+		}
+		if err := supplied.DcapImageHashes.Validate(); err != nil {
+			return domain.SuppliedMeasurements{}, err
+		}
+	case domain.ExpectedMeasurementNoAttestation:
+		if len(header.Measurements) > 0 && string(header.Measurements) != "null" {
+			return domain.SuppliedMeasurements{}, errors.New("no_attestation must not contain measurements")
+		}
+	default:
+		return domain.SuppliedMeasurements{}, fmt.Errorf("unknown measurement type %q", header.Type)
+	}
+
+	return supplied, nil
+}
+
+func measurementTypeMatchesAttestationType(measurementType domain.ExpectedMeasurementType, attestationType string) bool {
+	switch measurementType {
+	case domain.ExpectedMeasurementDCAP:
+		return attestationType == "dcap-tdx" || attestationType == "gcp-tdx"
+	case domain.ExpectedMeasurementAzure:
+		return attestationType == "azure-tdx"
+	case domain.ExpectedMeasurementImage:
+		return attestationType == "dcap-tdx" || attestationType == "gcp-tdx"
+	case domain.ExpectedMeasurementNoAttestation:
+		return attestationType == "none"
+	default:
+		return false
+	}
 }
 
 func (bhs *BuilderHubHandler) getAuthData(r *http.Request) (*AuthData, error) {
@@ -44,10 +133,9 @@ func (bhs *BuilderHubHandler) getAuthData(r *http.Request) (*AuthData, error) {
 		return nil, fmt.Errorf("attestation type is empty %w", ErrInvalidAuthData)
 	}
 	measurementHeader := r.Header.Get(MeasurementHeader)
-	measurementData := make(map[string]string)
-	err := json.Unmarshal([]byte(measurementHeader), &measurementData)
+	measurementData, err := parseMeasurementHeader(measurementHeader, attestationType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal measurement header %w", ErrInvalidAuthData)
+		return nil, fmt.Errorf("failed to parse measurement header: %v %w", err, ErrInvalidAuthData)
 	}
 	ipHeaders := r.Header.Values(ForwardedHeader)
 	if len(ipHeaders) == 0 {
@@ -205,6 +293,11 @@ func (bhs *BuilderHubHandler) GetConfigSecrets(w http.ResponseWriter, r *http.Re
 	if errors.Is(err, domain.ErrNotFound) {
 		bhs.log.Warn("invalid auth data", "error", err)
 		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	if err != nil {
+		bhs.log.Error("failed to verify ip and measurements", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	bts, err := bhs.builderHubService.GetConfigWithSecrets(r.Context(), builder.Name)

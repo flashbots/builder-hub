@@ -2,7 +2,9 @@
 package domain
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -22,6 +24,58 @@ type Measurement struct {
 	Name            string
 	AttestationType string
 	Measurement     map[string]SingleMeasurement
+	DcapImageHashes *DcapImageHashes
+}
+
+// DcapImageHashes contains the image-specific SHA-384 hashes used by portable
+// DCAP measurement policies.
+type DcapImageHashes struct {
+	UKIAuthenticode    string `json:"uki_authenticode"`
+	KernelAuthenticode string `json:"kernel_authenticode"`
+	CmdlineHash        string `json:"cmdline_hash"`
+	InitrdHash         string `json:"initrd_hash"`
+	GPTDiskGUIDHash    string `json:"gpt_disk_guid_hash"`
+}
+
+type ExpectedMeasurementType string
+
+const (
+	ExpectedMeasurementLegacy        ExpectedMeasurementType = "legacy"
+	ExpectedMeasurementDCAP          ExpectedMeasurementType = "dcap"
+	ExpectedMeasurementAzure         ExpectedMeasurementType = "azure"
+	ExpectedMeasurementImage         ExpectedMeasurementType = "image"
+	ExpectedMeasurementNoAttestation ExpectedMeasurementType = "no_attestation"
+)
+
+// SuppliedMeasurements represents either a legacy set of observed register
+// values or the expected policy selected by a current attestation proxy.
+type SuppliedMeasurements struct {
+	Type            ExpectedMeasurementType
+	Registers       map[string][]string
+	DcapImageHashes *DcapImageHashes
+	Legacy          map[string]string
+}
+
+// Validate checks that every portable image measurement is a SHA-384 value.
+func (d DcapImageHashes) Validate() error {
+	values := []struct {
+		name  string
+		value string
+	}{
+		{name: "uki_authenticode", value: d.UKIAuthenticode},
+		{name: "kernel_authenticode", value: d.KernelAuthenticode},
+		{name: "cmdline_hash", value: d.CmdlineHash},
+		{name: "initrd_hash", value: d.InitrdHash},
+		{name: "gpt_disk_guid_hash", value: d.GPTDiskGUIDHash},
+	}
+
+	for _, item := range values {
+		decoded, err := hex.DecodeString(item.value)
+		if err != nil || len(decoded) != 48 {
+			return fmt.Errorf("%s must be a 48-byte hexadecimal value", item.name)
+		}
+	}
+	return nil
 }
 
 // SingleMeasurement represents a single measurement with one or more expected values.
@@ -48,6 +102,7 @@ func NewMeasurement(name, attestationType string, measurements map[string]Single
 		AttestationType: attestationType,
 		Measurement:     measurements,
 		Name:            name,
+		DcapImageHashes: nil,
 	}
 }
 

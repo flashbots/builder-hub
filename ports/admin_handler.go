@@ -94,7 +94,12 @@ func (s *AdminHandler) AddMeasurement(w http.ResponseWriter, r *http.Request) {
 		s.BadRequest(w, r, "failed to unmarshal request body", err)
 		return
 	}
-	err = s.builderService.AddMeasurement(r.Context(), toDomainMeasurement(measurement), false)
+	domainMeasurement, err := toDomainMeasurement(measurement)
+	if err != nil {
+		s.BadRequest(w, r, "invalid measurement", err)
+		return
+	}
+	err = s.builderService.AddMeasurement(r.Context(), domainMeasurement, false)
 	if err != nil {
 		s.log.Error("failed to add measurement", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

@@ -121,7 +121,8 @@ func fromDomainBuilderWithServices(builder domain.BuilderWithServices) BuilderWi
 type Measurement struct {
 	Name            string                              `json:"measurement_id"`
 	AttestationType string                              `json:"attestation_type"`
-	Measurements    map[string]domain.SingleMeasurement `json:"measurements"`
+	Measurements    map[string]domain.SingleMeasurement `json:"measurements,omitempty"`
+	DcapImageHashes *domain.DcapImageHashes             `json:"dcap_image_hashes,omitempty"`
 }
 
 func fromDomainMeasurement(measurement domain.Measurement) Measurement {
@@ -129,13 +130,35 @@ func fromDomainMeasurement(measurement domain.Measurement) Measurement {
 		Name:            measurement.Name,
 		AttestationType: measurement.AttestationType,
 		Measurements:    measurement.Measurement,
+		DcapImageHashes: measurement.DcapImageHashes,
 	}
 	return m
 }
 
-func toDomainMeasurement(measurement Measurement) domain.Measurement {
-	m := domain.NewMeasurement(measurement.Name, measurement.AttestationType, measurement.Measurements)
-	return *m
+func toDomainMeasurement(measurement Measurement) (domain.Measurement, error) {
+	if measurement.Measurements != nil && measurement.DcapImageHashes != nil {
+		return domain.Measurement{}, errors.New("measurements and dcap_image_hashes are mutually exclusive")
+	}
+	if measurement.DcapImageHashes != nil {
+		if measurement.AttestationType != "dcap-tdx" && measurement.AttestationType != "gcp-tdx" {
+			return domain.Measurement{}, errors.New("dcap_image_hashes require dcap-tdx or gcp-tdx attestation type")
+		}
+		if err := measurement.DcapImageHashes.Validate(); err != nil {
+			return domain.Measurement{}, err
+		}
+	}
+
+	measurements := measurement.Measurements
+	if measurements == nil && measurement.DcapImageHashes == nil {
+		measurements = make(map[string]domain.SingleMeasurement)
+	}
+
+	return domain.Measurement{
+		Name:            measurement.Name,
+		AttestationType: measurement.AttestationType,
+		Measurement:     measurements,
+		DcapImageHashes: measurement.DcapImageHashes,
+	}, nil
 }
 
 type Builder struct {

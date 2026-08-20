@@ -5,7 +5,7 @@
 POST http://localhost:8081/api/admin/v1/measurements
 {
   "measurement_id": "test1",
-  "attestation_type": "test",
+  "attestation_type": "dcap-tdx",
   "measurements": {}
 }
 HTTP 200
@@ -22,7 +22,7 @@ GET http://localhost:8082/api/l1-builder/v1/measurements
 HTTP 200
 [Asserts]
 jsonpath "$.[0].measurement_id" == "test1"
-jsonpath "$.[0].attestation_type" == "test"
+jsonpath "$.[0].attestation_type" == "dcap-tdx"
 
 #
 # BUILDER SETUP

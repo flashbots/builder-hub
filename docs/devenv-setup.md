@@ -49,7 +49,7 @@ curl -v \
   --url http://localhost:8081/api/admin/v1/measurements \
   --data '{
   "measurement_id": "test1",
-  "attestation_type": "test",
+  "attestation_type": "dcap-tdx",
   "measurements": {}
 }'
 
