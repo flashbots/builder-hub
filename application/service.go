@@ -115,7 +115,7 @@ func checkExpectedMeasurement(measurement domain.SuppliedMeasurements, template 
 	case domain.ExpectedMeasurementImage:
 		return equalImageHashes(measurement.DcapImageHashes, template.DcapImageHashes)
 	case domain.ExpectedMeasurementNoAttestation:
-		return true
+		return len(template.Measurement) == 0 && template.DcapImageHashes == nil
 	default:
 		return false
 	}

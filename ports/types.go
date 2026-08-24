@@ -139,6 +139,9 @@ func toDomainMeasurement(measurement Measurement) (domain.Measurement, error) {
 	if measurement.Measurements != nil && measurement.DcapImageHashes != nil {
 		return domain.Measurement{}, errors.New("measurements and dcap_image_hashes are mutually exclusive")
 	}
+	if measurement.AttestationType == "none" && len(measurement.Measurements) > 0 {
+		return domain.Measurement{}, errors.New("none attestation type must not contain measurements")
+	}
 	if measurement.DcapImageHashes != nil {
 		if measurement.AttestationType != "dcap-tdx" && measurement.AttestationType != "gcp-tdx" {
 			return domain.Measurement{}, errors.New("dcap_image_hashes require dcap-tdx or gcp-tdx attestation type")

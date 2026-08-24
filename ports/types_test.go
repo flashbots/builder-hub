@@ -168,6 +168,24 @@ func TestToDomainMeasurementPortablePolicy(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestToDomainMeasurementNoAttestationPolicy(t *testing.T) {
+	measurement, err := toDomainMeasurement(Measurement{
+		Name:            "no-attestation",
+		AttestationType: "none",
+	})
+	require.NoError(t, err)
+	require.Empty(t, measurement.Measurement)
+
+	_, err = toDomainMeasurement(Measurement{
+		Name:            "invalid-no-attestation",
+		AttestationType: "none",
+		Measurements: map[string]domain.SingleMeasurement{
+			"0": {Expected: "aaaa"},
+		},
+	})
+	require.EqualError(t, err, "none attestation type must not contain measurements")
+}
+
 func validImageHashes() domain.DcapImageHashes {
 	return domain.DcapImageHashes{
 		UKIAuthenticode:    strings.Repeat("1", 96),

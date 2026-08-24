@@ -275,6 +275,15 @@ func TestCheckExpectedMeasurementAllowAnyAndNoAttestation(t *testing.T) {
 	require.True(t, checkExpectedMeasurement(domain.SuppliedMeasurements{
 		Type: domain.ExpectedMeasurementNoAttestation,
 	}, domain.Measurement{AttestationType: "none"}))
+
+	require.False(t, checkExpectedMeasurement(domain.SuppliedMeasurements{
+		Type: domain.ExpectedMeasurementNoAttestation,
+	}, domain.Measurement{
+		AttestationType: "none",
+		Measurement: map[string]domain.SingleMeasurement{
+			"0": {Expected: "aaaa"},
+		},
+	}))
 }
 
 func legacyMeasurements(values map[string]string) domain.SuppliedMeasurements {
