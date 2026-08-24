@@ -77,6 +77,30 @@ func TestPortableMeasurement(t *testing.T) {
 	require.Len(t, measurements, 1)
 	require.Nil(t, measurements[0].Measurement)
 	require.Equal(t, hashes, measurements[0].DcapImageHashes)
+
+	t.Run("rejects missing policy representation", func(t *testing.T) {
+		_, err := dbService.DB.Exec(`
+			INSERT INTO measurements_whitelist (name, attestation_type, measurement, dcap_image_hashes)
+			VALUES ('missing-policy', 'dcap-tdx', NULL, NULL)
+		`)
+		require.Error(t, err)
+	})
+
+	t.Run("rejects JSON null policy representation", func(t *testing.T) {
+		_, err := dbService.DB.Exec(`
+			INSERT INTO measurements_whitelist (name, attestation_type, measurement, dcap_image_hashes)
+			VALUES ('json-null-policy', 'dcap-tdx', 'null'::jsonb, NULL)
+		`)
+		require.Error(t, err)
+	})
+
+	t.Run("rejects non-object policy representation", func(t *testing.T) {
+		_, err := dbService.DB.Exec(`
+			INSERT INTO measurements_whitelist (name, attestation_type, measurement, dcap_image_hashes)
+			VALUES ('array-policy', 'dcap-tdx', '[]'::jsonb, NULL)
+		`)
+		require.Error(t, err)
+	})
 }
 
 func TestAdminFlow(t *testing.T) {

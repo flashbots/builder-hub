@@ -128,6 +128,9 @@ func expectedMeasurementType(template domain.Measurement) (domain.ExpectedMeasur
 		}
 		return "", false
 	}
+	if template.Measurement == nil {
+		return "", false
+	}
 
 	switch template.AttestationType {
 	case "dcap-tdx", "gcp-tdx":

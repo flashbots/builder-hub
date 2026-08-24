@@ -274,7 +274,10 @@ func TestCheckExpectedMeasurementAllowAnyAndNoAttestation(t *testing.T) {
 
 	require.True(t, checkExpectedMeasurement(domain.SuppliedMeasurements{
 		Type: domain.ExpectedMeasurementNoAttestation,
-	}, domain.Measurement{AttestationType: "none"}))
+	}, domain.Measurement{
+		AttestationType: "none",
+		Measurement:     map[string]domain.SingleMeasurement{},
+	}))
 
 	require.False(t, checkExpectedMeasurement(domain.SuppliedMeasurements{
 		Type: domain.ExpectedMeasurementNoAttestation,
@@ -284,6 +287,15 @@ func TestCheckExpectedMeasurementAllowAnyAndNoAttestation(t *testing.T) {
 			"0": {Expected: "aaaa"},
 		},
 	}))
+
+	require.False(t, checkExpectedMeasurement(domain.SuppliedMeasurements{
+		Type: domain.ExpectedMeasurementNoAttestation,
+	}, domain.Measurement{AttestationType: "none"}))
+
+	require.False(t, checkExpectedMeasurement(domain.SuppliedMeasurements{
+		Type:      domain.ExpectedMeasurementDCAP,
+		Registers: map[string][]string{},
+	}, domain.Measurement{AttestationType: "dcap-tdx"}))
 }
 
 func legacyMeasurements(values map[string]string) domain.SuppliedMeasurements {
