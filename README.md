@@ -218,7 +218,7 @@ For example, a DCAP policy is represented as compact JSON with an array of accep
 {"type":"dcap","measurements":{"0":["<MRTD SHA-384>"],"3":["<RTMR2 SHA-384>"]}}
 ```
 
-Portable image policies use `"type": "image"`. If no attestation was provided, it will have`"type": "no_attestation"` and no `measurements` field. Legacy headers containing a plain register-to-string object are accepted for backwards compatibility.
+Portable image policies use `"type": "image"`. If no attestation was provided, it will have `"type": "no_attestation"` and no `measurements` field. Legacy headers containing a plain register-to-string object are accepted for backwards compatibility.
 
 ---
 
