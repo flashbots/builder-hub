@@ -172,7 +172,7 @@ func (bhs *BuilderHubHandler) GetAllowedMeasurements(w http.ResponseWriter, r *h
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	pMeasurements := make([]Measurement, 0, len(measurements))
+	pMeasurements := make([]measurementResponse, 0, len(measurements))
 	for _, m := range measurements {
 		pMeasurements = append(pMeasurements, fromDomainMeasurement(m))
 	}

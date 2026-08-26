@@ -186,6 +186,41 @@ func TestToDomainMeasurementNoAttestationPolicy(t *testing.T) {
 	require.EqualError(t, err, "none attestation type must not contain measurements")
 }
 
+func TestMeasurementResponseJSON(t *testing.T) {
+	t.Run("preserves empty register policy", func(t *testing.T) {
+		response := fromDomainMeasurement(domain.Measurement{
+			Name:            "allow-any",
+			AttestationType: "dcap-tdx",
+			Measurement:     map[string]domain.SingleMeasurement{},
+		})
+
+		encoded, err := json.Marshal(response)
+		require.NoError(t, err)
+		require.JSONEq(t, `{
+			"measurement_id": "allow-any",
+			"attestation_type": "dcap-tdx",
+			"measurements": {}
+		}`, string(encoded))
+	})
+
+	t.Run("omits register policy for image policy", func(t *testing.T) {
+		hashes := validImageHashes()
+		response := fromDomainMeasurement(domain.Measurement{
+			Name:            "portable",
+			AttestationType: "gcp-tdx",
+			DcapImageHashes: &hashes,
+		})
+
+		encoded, err := json.Marshal(response)
+		require.NoError(t, err)
+
+		var object map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(encoded, &object))
+		require.NotContains(t, object, "measurements")
+		require.Contains(t, object, "dcap_image_hashes")
+	})
+}
+
 func validImageHashes() domain.DcapImageHashes {
 	return domain.DcapImageHashes{
 		UKIAuthenticode:    strings.Repeat("1", 96),

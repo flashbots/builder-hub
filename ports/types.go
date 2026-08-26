@@ -125,12 +125,25 @@ type Measurement struct {
 	DcapImageHashes *domain.DcapImageHashes             `json:"dcap_image_hashes,omitempty"`
 }
 
-func fromDomainMeasurement(measurement domain.Measurement) Measurement {
-	m := Measurement{
+type measurementResponse struct {
+	Name            string                               `json:"measurement_id"`
+	AttestationType string                               `json:"attestation_type"`
+	Measurements    *map[string]domain.SingleMeasurement `json:"measurements,omitempty"`
+	DcapImageHashes *domain.DcapImageHashes              `json:"dcap_image_hashes,omitempty"`
+}
+
+func fromDomainMeasurement(measurement domain.Measurement) measurementResponse {
+	m := measurementResponse{
 		Name:            measurement.Name,
 		AttestationType: measurement.AttestationType,
-		Measurements:    measurement.Measurement,
 		DcapImageHashes: measurement.DcapImageHashes,
+	}
+	if measurement.DcapImageHashes == nil {
+		measurements := measurement.Measurement
+		if measurements == nil {
+			measurements = make(map[string]domain.SingleMeasurement)
+		}
+		m.Measurements = &measurements
 	}
 	return m
 }
