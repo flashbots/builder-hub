@@ -16,6 +16,7 @@ import (
 	"github.com/flashbots/builder-hub/adapters/database"
 	"github.com/flashbots/builder-hub/application"
 	"github.com/flashbots/builder-hub/domain"
+	"github.com/flashbots/builder-hub/internal/testutil"
 	"github.com/flashbots/builder-hub/ports"
 	"github.com/stretchr/testify/require"
 )
@@ -371,7 +372,7 @@ func createMeasurement(t *testing.T, s *Server, measurement ports.Measurement) {
 
 func createDbService(t *testing.T) *database.Service {
 	t.Helper()
-	dbService, err := database.NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	dbService, err := database.NewDatabaseService(testutil.PostgresDSN(t))
 	if err != nil {
 		t.Errorf("NewDatabaseService() = %v; want nil", err)
 	}

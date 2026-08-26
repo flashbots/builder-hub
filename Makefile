@@ -47,6 +47,15 @@ dev-postgres-up: ## Start the PostgreSQL database for development
 dev-postgres-down: ## Stop the PostgreSQL database for development
 	docker rm -f postgres-test
 
+.PHONY: test-postgres-up
+test-postgres-up: ## Start the dedicated disposable PostgreSQL test database
+	docker run -d --name builder-hub-postgres-test -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=builder_hub_test postgres
+	for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/builder_hub_test?sslmode=disable" -f $file; done
+
+.PHONY: test-postgres-down
+test-postgres-down: ## Stop the dedicated disposable PostgreSQL test database
+	docker rm -f builder-hub-postgres-test
+
 .PHONY: dev-docker-compose-up
 dev-docker-compose-up: ## Start Docker compose
 	docker compose -f docker/docker-compose.yaml build
@@ -75,7 +84,7 @@ test: ## Run tests
 
 .PHONY: test-with-db
 test-with-db: ## Run tests including live database tests
-	RUN_DB_TESTS=1 go test -race ./...
+	RUN_DB_TESTS=1 TEST_POSTGRES_DSN="postgres://postgres:postgres@localhost:5432/builder_hub_test?sslmode=disable" go test -race ./...
 
 .PHONY: lint
 lint: ## Run linters

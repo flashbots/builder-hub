@@ -4,19 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"net"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/flashbots/builder-hub/domain"
+	"github.com/flashbots/builder-hub/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetBuilder(t *testing.T) {
-	if os.Getenv("RUN_DB_TESTS") != "1" {
-		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
-	}
-	serv, err := NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	serv, err := NewDatabaseService(testutil.PostgresDSN(t))
 	if err != nil {
 		t.Errorf("NewDatabaseService() = %v; want nil", err)
 	}
@@ -50,10 +47,7 @@ func TestGetBuilder(t *testing.T) {
 }
 
 func TestPortableMeasurement(t *testing.T) {
-	if os.Getenv("RUN_DB_TESTS") != "1" {
-		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
-	}
-	dbService, err := NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	dbService, err := NewDatabaseService(testutil.PostgresDSN(t))
 	require.NoError(t, err)
 	_, err = dbService.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")
 	require.NoError(t, err)
@@ -104,10 +98,7 @@ func TestPortableMeasurement(t *testing.T) {
 }
 
 func TestAdminFlow(t *testing.T) {
-	if os.Getenv("RUN_DB_TESTS") != "1" {
-		t.Skip("skipping test; RUN_DB_TESTS is not set to 1")
-	}
-	dbService, err := NewDatabaseService("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	dbService, err := NewDatabaseService(testutil.PostgresDSN(t))
 	if err != nil {
 		t.Errorf("NewDatabaseService() = %v; want nil", err)
 	}

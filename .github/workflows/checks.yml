@@ -18,6 +18,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: builder_hub_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -36,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run migrations
-        run: for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -f $file; done
+        run: for file in schema/*.sql; do psql "postgres://postgres:postgres@localhost:5432/builder_hub_test?sslmode=disable" -f $file; done
 
       - name: Run unit tests
         run: make test-with-db
