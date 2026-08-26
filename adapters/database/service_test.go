@@ -14,9 +14,8 @@ import (
 
 func TestGetBuilder(t *testing.T) {
 	serv, err := NewDatabaseService(testutil.PostgresDSN(t))
-	if err != nil {
-		t.Errorf("NewDatabaseService() = %v; want nil", err)
-	}
+	require.NoError(t, err)
+	testutil.RequireTestDatabase(t, serv.DB)
 	_, err = serv.DB.Exec("TRUNCATE TABLE public.builders CASCADE")
 	require.NoError(t, err)
 	_, err = serv.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")
@@ -49,6 +48,7 @@ func TestGetBuilder(t *testing.T) {
 func TestPortableMeasurement(t *testing.T) {
 	dbService, err := NewDatabaseService(testutil.PostgresDSN(t))
 	require.NoError(t, err)
+	testutil.RequireTestDatabase(t, dbService.DB)
 	_, err = dbService.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")
 	require.NoError(t, err)
 
@@ -99,9 +99,8 @@ func TestPortableMeasurement(t *testing.T) {
 
 func TestAdminFlow(t *testing.T) {
 	dbService, err := NewDatabaseService(testutil.PostgresDSN(t))
-	if err != nil {
-		t.Errorf("NewDatabaseService() = %v; want nil", err)
-	}
+	require.NoError(t, err)
+	testutil.RequireTestDatabase(t, dbService.DB)
 	_, err = dbService.DB.Exec("TRUNCATE TABLE public.builders CASCADE")
 	require.NoError(t, err)
 	_, err = dbService.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")

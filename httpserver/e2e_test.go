@@ -373,9 +373,8 @@ func createMeasurement(t *testing.T, s *Server, measurement ports.Measurement) {
 func createDbService(t *testing.T) *database.Service {
 	t.Helper()
 	dbService, err := database.NewDatabaseService(testutil.PostgresDSN(t))
-	if err != nil {
-		t.Errorf("NewDatabaseService() = %v; want nil", err)
-	}
+	require.NoError(t, err)
+	testutil.RequireTestDatabase(t, dbService.DB)
 	_, err = dbService.DB.Exec("TRUNCATE TABLE public.builders CASCADE")
 	require.NoError(t, err)
 	_, err = dbService.DB.Exec("TRUNCATE TABLE public.measurements_whitelist CASCADE")

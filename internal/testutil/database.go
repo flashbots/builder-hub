@@ -1,3 +1,4 @@
+// Package testutil provides safety helpers for integration tests.
 package testutil
 
 import (
@@ -10,6 +11,10 @@ import (
 )
 
 const TestDatabaseName = "builder_hub_test"
+
+type databaseQueryer interface {
+	Get(dest any, query string, args ...any) error
+}
 
 // PostgresDSN returns the explicitly configured test database DSN after
 // verifying that it points to a dedicated database on the local machine.
@@ -51,6 +56,33 @@ func validatePostgresDSN(dsn string) error {
 	databaseName := strings.TrimPrefix(parsed.Path, "/")
 	if databaseName != TestDatabaseName {
 		return fmt.Errorf("database is %q; expected %q", databaseName, TestDatabaseName)
+	}
+	for parameter := range parsed.Query() {
+		if parameter != "sslmode" {
+			return fmt.Errorf("unsupported TEST_POSTGRES_DSN query parameter %q", parameter)
+		}
+	}
+
+	return nil
+}
+
+// RequireTestDatabase verifies the connected database identity before a test
+// performs destructive operations.
+func RequireTestDatabase(t testing.TB, db databaseQueryer) {
+	t.Helper()
+
+	if err := validateConnectedDatabase(db); err != nil {
+		t.Fatalf("refusing to run destructive database test: %v", err)
+	}
+}
+
+func validateConnectedDatabase(db databaseQueryer) error {
+	var databaseName string
+	if err := db.Get(&databaseName, "SELECT current_database()"); err != nil {
+		return fmt.Errorf("failed to verify connected database: %w", err)
+	}
+	if databaseName != TestDatabaseName {
+		return fmt.Errorf("connected database is %q; expected %q", databaseName, TestDatabaseName)
 	}
 
 	return nil
